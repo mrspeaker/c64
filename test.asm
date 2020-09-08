@@ -19,7 +19,7 @@ main:
                 lda #WHITE
                 sta SCREEN_COLOR
 
-                ldy #$7f   // $7f = %01111111
+                ldy #%01111111
                 sty $dc0d   // Turn off CIAs Timer interrupts
                 sty $dd0d   // Turn off CIAs Timer interrupts
                 lda $dc0d   // cancel all CIA-IRQs in queue/unprocessed
