@@ -4,42 +4,65 @@ init:
                 sta $D020
                 sta $D021
 
+                jsr load_sprites
+                jsr init_irq
+loop:
+                rts
+
+init_irq:
+                lda #<irq
+                ldx #>irq
+                sta $314
+                stx $315
+                rts
+
+load_sprites:
                 lda #%00000011
                 sta $D015
-                sta $D01D
-                sta $D017
 
-                lda #$f0
-                sta $D000
+                lda #$ff
+                sta $D000               // pos
                 sta $D002
-                lda #$40
+                lda #$60
                 sta $D001
                 sta $D003
-                lda #%00000010
-                sta $D01C
-                lda #0
-                sta $D027
-                lda #6
-                sta $D028
-                lda #2
-                sta $D025
-                lda #13
-                sta $D026
 
-                lda #$340/64
+                lda #%00000010
+                sta $D01C               // multicolor
+                lda #0
+                sta $D027               // spr0 color
+                lda #4
+                sta $D028               // spr1 color
+                lda #13
+                sta $D025               // multi1
+                lda #7
+                sta $D026               // multi2
+
+                lda #$340/64            // mem pointers
                 sta $7F8
                 lda #$340/64+1
                 sta $7f9
 
-                ldx #64*2
-spr:
+                ldx #64*2               // load 2 sprites
+_load:
                 lda sprites,x
                 sta $340,x
                 dex
-                bne spr
-
-loop:
+                bne _load
                 rts
+
+irq:
+                dec $D019
+                lda $D012
+                tax
+                and #%00010000
+                cmp #%00010000
+                bne _irq_d
+                txa
+                sta $D001
+                sta $D003
+_irq_d:
+                jmp $EA81
 
 sprites:
                 .import binary "worm.bin"
