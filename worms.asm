@@ -1,15 +1,31 @@
             BasicUpstart2(init)
 init:
+                sei
                 lda #3
                 sta $D020
                 sta $D021
 
                 jsr load_sprites
                 jsr init_irq
-loop:
+                cli
                 rts
 
 init_irq:
+
+                lda #%01111111          // disable CIA interrupt
+                sta $DC0D
+
+                lda $D01A               // enable raster IRQ
+                ora #$01
+                sta $D01A
+
+                lda $D011               // clear high bit or raster line
+                and #%01111111
+                sta $D011
+
+                lda #49
+                sta $D012
+
                 lda #<irq
                 ldx #>irq
                 sta $314
@@ -52,17 +68,48 @@ _load:
                 rts
 
 irq:
-                dec $D019
-                lda $D012
-                tax
-                and #%00010000
-                cmp #%00010000
-                bne _irq_d
-                txa
-                sta $D001
-                sta $D003
-_irq_d:
-                jmp $EA81
 
+                inc $D020
+                ldx spr_last
+                lda spr_lines,x
+                sta $D001
+                inc $D001
+                sta $D003
+                inc $D003
+                lda spr_off,x
+                adc #180
+                sta $D000
+                sta $D002
+
+                inc spr_last
+                lda spr_last
+                cmp #9
+                bmi _b
+                                        // leave to rom
+                ldx #$0
+                stx spr_last
+                lda spr_lines,x
+                sta $D012
+                lda #4
+                sta $d020
+                dec $D019
+                jmp $EA31
+_b:
+                ldx spr_last
+                lda spr_lines,x
+                sta $D012
+
+_irq_d:
+                dec $D019               // clear source of interrupts
+                pla
+                tay
+                pla
+                tax
+                pla
+                rti
+
+spr_last:       .byte 1
+spr_lines:      .byte 49,72,94,116,138,160,182,204,226
+spr_off:        .byte 0,-15,-24,-15,0,15,24,15,0
 sprites:
                 .import binary "worm.bin"
