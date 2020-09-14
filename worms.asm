@@ -1,4 +1,6 @@
             BasicUpstart2(init)
+
+            .const SPR_ROWS = 9
 init:
                 sei
                 lda #3
@@ -63,9 +65,11 @@ load_sprites:   {
                 sta $7f9
                 sta $7fa
                 sta $7fd
+                lda #$340/64+2
+                sta $7fd
 
                 // Load sprite data
-                ldx #64*2
+                ldx #64*3
 !:
                 lda sprites,x
                 sta $340,x
@@ -112,7 +116,7 @@ irq:            {
                 inc spr_off,x
                 inc spr_last
                 lda spr_last
-                cmp #9
+                cmp #SPR_ROWS
                 bmi _not_last
 _last_sprite:
 
@@ -145,3 +149,4 @@ spr_lines:      .byte 50,72,94,116,138,160,182,204,226
 spr_off:        .byte 0,-15,-24,-15,0,15,24,15,0
 sprites:
                 .import binary "worm.bin"
+                .fill 64, $55
