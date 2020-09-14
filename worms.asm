@@ -32,7 +32,7 @@ init_irq:
                 rts
 
 load_sprites:
-                lda #%00011111
+                lda #%00111111
                 sta $D015
 
                 lda #$ff
@@ -41,14 +41,16 @@ load_sprites:
                 sta $D004
                 sta $D006
                 sta $D008
+                sta $D00A
                 lda #$50
                 sta $D001
                 sta $D003
                 sta $D005
                 sta $D007
                 sta $D009
+                sta $D00B
 
-                lda #%00000110
+                lda #%00100110
                 sta $D01C               // multicolor
                 lda #0
                 sta $D027               // spr0 color
@@ -67,6 +69,7 @@ load_sprites:
                 lda #$340/64+1
                 sta $7f9
                 sta $7fa
+                sta $7fd
 
                 ldx #64*2               // load 2 sprites
 _load:
@@ -89,6 +92,7 @@ irq:
                 sta $D005
                 sta $D007
                 sta $D009
+                sta $D00B
                 lda spr_off,x
                 adc #180
                 sta $D000
@@ -97,6 +101,7 @@ irq:
                 adc spr_off,x
                 sta $D004
                 lda $D006
+
                 clc
                 adc spr_off,x
                 asl
@@ -105,6 +110,11 @@ irq:
                 stx $D025
                 inc $D025
 
+                // exit sprite colors
+                stx $D02b
+                rol $D02b
+
+                // dunno
                 inc spr_off,x
 
                 inc spr_last

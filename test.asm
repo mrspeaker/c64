@@ -135,7 +135,12 @@ irq2:
                 sta $314
                 stx $315
 
-                jmp $EA81
+                pla // exit to rom
+                tay
+                pla
+                tax
+                pla
+                rti
 
 sp0x:           .byte $0
 
