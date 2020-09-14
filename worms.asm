@@ -10,8 +10,7 @@ init:
                 cli
                 rts
 
-init_irq:
-
+init_irq:       {
                 lda #%01111111          // disable CIA interrupt
                 sta $DC0D
 
@@ -30,25 +29,19 @@ init_irq:
                 sta $314
                 stx $315
                 rts
+}
 
-load_sprites:
+load_sprites:   {
                 lda #%00111111
                 sta $D015
 
+                // X and Y pos
                 lda #$ff
-                sta $D000               // pos
-                sta $D002
-                sta $D004
-                sta $D006
-                sta $D008
-                sta $D00A
-                lda #$50
-                sta $D001
-                sta $D003
-                sta $D005
-                sta $D007
-                sta $D009
-                sta $D00B
+                ldx #$50
+                .for (var i = 0; i < 6; i++) {
+                    sta $D000 + i * 2
+                    stx $D001 + i * 2
+                }
 
                 lda #%00100110
                 sta $D01C               // multicolor
@@ -78,21 +71,21 @@ _load:
                 dex
                 bne _load
                 rts
+}
 
-irq:
-
+irq:            {
                 inc $D020
+
                 ldx spr_last
                 lda spr_lines,x
-                // TODO: wait until new D012 then position.
-                // would fix jitter
-                adc #2 // allow a line! Else, doesn't show
-                sta $D001
-                sta $D003
-                sta $D005
-                sta $D007
-                sta $D009
-                sta $D00B
+                adc #2                  // allow a couple lines! Else, doesn't show
+
+                // Store Y's
+                .for(var i = 0;i < 6; i++) {
+                    sta $D001 + i * 2
+                }
+
+                // And X's
                 lda spr_off,x
                 adc #180
                 sta $D000
@@ -100,13 +93,15 @@ irq:
                 adc #25
                 adc spr_off,x
                 sta $D004
-                lda $D006
 
+                // Backwards sprite
+                lda $D006
                 clc
                 adc spr_off,x
                 asl
                 sta $D006
 
+                // Colors
                 stx $D025
                 inc $D025
 
@@ -114,35 +109,36 @@ irq:
                 stx $D02b
                 rol $D02b
 
-                // dunno
+                // Move
                 inc spr_off,x
-
                 inc spr_last
                 lda spr_last
                 cmp #9
-                bmi _b
-                                        // leave to rom
+                bmi _not_last
+_last_sprite:
+
                 ldx #$0
                 stx spr_last
                 lda spr_lines,x
                 sta $D012
-                lda #4
+                lda #3
                 sta $d020
                 dec $D019
-                jmp $EA31
-_b:
+                jmp $EA31               // leave to rom
+_not_last:
                 ldx spr_last
                 lda spr_lines,x
                 sta $D012
 
 _irq_d:
-                dec $D019               // clear source of interrupts
+                dec $D019
                 pla
                 tay
                 pla
                 tax
                 pla
                 rti
+}
 
 spr_last:       .byte 1
 spr_lines:      .byte 50,72,94,116,138,160,182,204,226
