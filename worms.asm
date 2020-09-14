@@ -64,12 +64,13 @@ load_sprites:   {
                 sta $7fa
                 sta $7fd
 
-                ldx #64*2               // load 2 sprites
-_load:
+                // Load sprite data
+                ldx #64*2
+!:
                 lda sprites,x
                 sta $340,x
                 dex
-                bne _load
+                bne !-
                 rts
 }
 
