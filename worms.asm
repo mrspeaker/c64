@@ -104,10 +104,8 @@ irq:            {
                 // Colors
                 stx $D025
                 inc $D025
-
-                // exit sprite colors
-                stx $D02b
-                rol $D02b
+                stx $D02B
+                rol $D02B
 
                 // Move
                 inc spr_off,x
@@ -122,7 +120,8 @@ _last_sprite:
                 lda spr_lines,x
                 sta $D012
                 lda #3
-                sta $d020
+                sta $D020
+
                 dec $D019
                 jmp $EA31               // leave to rom
 _not_last:
