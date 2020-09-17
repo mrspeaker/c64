@@ -112,12 +112,6 @@ irq:            {
                 stx $D02B
                 rol $D02B
 
-                ldy $dc04
-                tya
-                eor $dc05
-                sta $400,y
-                sta $640,y
-
                 // Move
                 inc spr_off,x
                 inc spr_last
@@ -131,6 +125,13 @@ _last_sprite:
                 sta $D012
                 lda #3
                 sta $D020
+
+_chars:
+                ldy $dc04
+                tya
+                eor $dc05
+                sta $400,y
+                sta $680,y
 
 _text_scr:
                 lda $D016
@@ -167,7 +168,7 @@ spr_last:       .byte 1
 spr_lines:      .byte 50,72,94,116,138,160,182,204,226
 spr_off:        .byte 0,-15,-24,-15,0,15,24,15,0
 scrx:           .byte 0
-scrx_off:   .byte 0,1,2,3,3,2,1
+scrx_off:       .byte 0,1,2,3,3,2,1
 sprites:
                 .import binary "worm.bin"
                 .fill 64, $55
