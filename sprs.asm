@@ -36,6 +36,16 @@ _spr_m:
                 asl
                 tax
                 inc SPR0_Y_POS,x
+
+                lda SPR0_Y_POS,x
+                cmp #$0
+                bne !+
+_wrap:
+                adc $dc04
+                eor $dc05
+                sta SPR0_X_POS,x
+                sta $D027,y
+!:
                 dey
                 bpl _spr_m
                 rts
@@ -43,6 +53,12 @@ _spr_m:
 setup_sprite:
                 lda #%11111111
                 sta SPR_ENABLE
+
+                sta $D01c
+                lda #$7
+                sta $D025
+                lda #$0
+                sta $D026
 
                 // copy sprite data
                 ldx #64
@@ -65,10 +81,14 @@ _spr:
                 asl
                 asl
                 asl
+                adc $dc04
+                eor $dc05
                 // center them
-                adc #$71
+                adc #$80
 
                 sta SPR0_X_POS,x
+                asl
+                asl
                 sta SPR0_Y_POS,x
 
                 txa // halve x for next iteration
@@ -80,4 +100,14 @@ _spr:
 
                 rts
 sprdata:
+                .byte $00,$00,$00,$00,$95,$40,$02,$a9
+                .byte $90,$0a,$a9,$54,$0a,$aa,$64,$0a
+                .byte $aa,$95,$2a,$aa,$a5,$2a,$aa,$a9
+                .byte $3a,$aa,$a6,$3a,$aa,$a9,$3a,$aa
+                .byte $a6,$3a,$aa,$a9,$3e,$aa,$a9,$3f
+                .byte $aa,$aa,$3f,$ea,$ba,$3b,$ba,$fe
+                .byte $3e,$eb,$bc,$0f,$ba,$fc,$0f,$ee
+                .byte $f0,$03,$ff,$c0,$00,$00,$00,$83
+
+
                 .fill 64/6, [$aa, $aa, $aa, $55, $55, $55]
