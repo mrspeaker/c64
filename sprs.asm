@@ -4,10 +4,10 @@
             .const SPR0_X_POS = $d000
             .const SPR0_Y_POS = $d001
             .const SPR0_DATA_POINTER = $07F8
-            .const SPRITE_X_MSB     = $D010
-            .const BORDER_COLOR = $d020
-            .const BACKGROUND_COLOR = $d021
-            .const RASTER_COMPARE = $d012
+            .const SPRITE_X_MSB      = $D010
+            .const BORDER_COLOR      = $d020
+            .const BACKGROUND_COLOR  = $d021
+            .const RASTER_COMPARE    = $d012
             .const CLS = $e544
 
 main:
@@ -30,47 +30,54 @@ init:
                 rts
 
 move_sprites:
-                ldx #7
+                ldy #7
 _spr_m:
-                dex
-                txa
+                tya
                 asl
                 tax
                 inc SPR0_Y_POS,x
-                lsr
-                tax
-                inx
-                dex
-                bne _spr_m
+                dey
+                bpl _spr_m
                 rts
 
 setup_sprite:
                 lda #%11111111
                 sta SPR_ENABLE
+
+                // copy sprite data
+                ldx #64
+!:
+                lda sprdata,x
+                sta $340,x
+                dex
+                bpl !-
+
                 ldx #7
 _spr:
-                dex // offset by 1 so bne works at end
-
-                txa
+                lda #$340/64
                 sta SPR0_DATA_POINTER,x
+                txa
 
                 asl // double x for pos pointer
                 tax
 
+                // spread them out
                 asl
                 asl
                 asl
-                adc #$80
+                // center them
+                adc #$71
 
                 sta SPR0_X_POS,x
                 sta SPR0_Y_POS,x
 
                 txa // halve x for next iteration
-                lsr
+                lsr // (after we doubled above for pos)
                 tax
 
-                inx
                 dex
-                bne _spr
+                bpl _spr
 
                 rts
+sprdata:
+                .fill 64/6, [$aa, $aa, $aa, $55, $55, $55]
