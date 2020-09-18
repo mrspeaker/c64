@@ -19,7 +19,7 @@ init:
                 rts
 
 init_sprites:
-                lda #%00000001
+                lda #%00000011
                 sta $d015
 
                 lda #$1
@@ -33,6 +33,12 @@ init_sprites:
 
                 lda #$340/64
                 sta $7f8
+                sta $7f9
+
+                lda #180
+                sta $d002
+                sta $d003
+
                 rts
 
 update:
@@ -64,6 +70,15 @@ update:
                 lsr
                 bcs !+
                 inc player_y
+!:
+
+                lda $d01e
+                and #%00000001
+                beq !+
+                dec $d020
+                lda $dc04
+                eor $dc05
+                sta $d003
 !:
 
                 rts
