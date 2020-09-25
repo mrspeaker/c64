@@ -25,8 +25,8 @@ entry:
                 and #$7f
                 sta $d011
 
-                lda #<irq
-                ldx #>irq
+                lda #<irq_bitmap
+                ldx #>irq_bitmap
                 sta $314
                 stx $315
 
@@ -36,28 +36,27 @@ _write_message:
 !:
                 lda msg,x
                 beq _loop
-                sta $400+40*SCR_ROW,x
+                sta $400+40*SCR_ROW,x   // draw message to screen
                 txa
                 and #%00000111
                 tay
                 lda cols,y
-                sta $d800+40*SCR_ROW,x
+                sta $d800+40*SCR_ROW,x  // and colors
                 inx
                 jmp !-
 _loop:
-                lda #0 // hide the edges
+                lda #0 // hide the edges (lol, hides a bug)
                 sta $d800+40*SCR_ROW
                 sta $d800+40*(SCR_ROW+1)-1
 
                 jmp *
 
-irq:
-                dec $d019
-
+irq_bitmap:
+                // reset raster for textmode
                 lda #$87
                 sta $d012
-                lda #<irq2
-                ldx #>irq2
+                lda #<irq_text_mode
+                ldx #>irq_text_mode
                 sta $314
                 stx $315
 
@@ -68,6 +67,8 @@ irq:
                 lda #%11011000
                 sta $d016
 
+                // irq done
+                dec $d019
                 pla
                 tay
                 pla
@@ -76,11 +77,10 @@ irq:
 
                 rti
 
-irq2:
+irq_text_mode:
                 lda $d012
                 cmp #$85
-                bmi irq2
-
+                bmi irq_text_mode
 
                 // text mode
                 lda #%00011000
@@ -90,36 +90,42 @@ irq2:
                 lda #%11001000
                 sta $d016
 
+                // Move fine scroll
                 dec xoffi
                 bpl !+
                 ldx #7
                 stx xoffi
+                // We fine scrolled for 8 pixels,
+                // so move all characters 1 pos to the left
 
+                // copy first character to last column (so the message loops)
                 lda $400+40*SCR_ROW
                 sta $3ff+40*(SCR_ROW+1)
 
                 ldy #0
+                // copy all characters 1 to the left
 !b:
                 lda $401+40*SCR_ROW,y
                 sta $400+40*SCR_ROW,y
                 iny
-                cpy #39
+                cpy #39 // 39 character for the row
                 bne !b-
 
 !:
-                // update fine scroll
+                // update fine scroll register
                 lda $D016
                 and #%11111000
                 ora xoffi
                 sta $D016
 
-                lda #$0 // reset irq to 0
+                lda #$0 // reset irq for bitmap
                 sta $d012
-                lda #<irq
-                ldx #>irq
+                lda #<irq_bitmap
+                ldx #>irq_bitmap
                 sta $314
                 stx $315
 
+                // irq done
                 dec $d019
                 pla
                 tay
