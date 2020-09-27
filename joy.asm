@@ -25,7 +25,7 @@ init:
                 lda $dc0d               // cancel all CIA-IRQs in queue/unprocessed
                 lda $dd0d
 
-                lda #%11110100
+                lda #%00000100
                 sta $d01a
                 sta $d019
 

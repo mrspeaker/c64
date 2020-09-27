@@ -6,9 +6,8 @@ entry:
 
                 lda #$7f
                 sta $dc0d               // Disable CIA #1
-                lda $dc0d
 
-                lda #%11110100          // Enable sprite collision irq
+                lda #%01110100          // Enable sprite collision irq
                 sta $d01a
 
                 lda #<irq
@@ -17,10 +16,14 @@ entry:
                 stx $315
 
                 cli
+                lda $d01e
                 jmp *
+
 irq:
                 dec $d020
                 dec $d019
+                lda $d01e               // Have to read D01E after dec D019
+
                 pla
                 tay
                 pla
@@ -31,7 +34,6 @@ irq:
 init_sprites:
                 lda #%00000011
                 sta $d015
-
                 // load sprite data
                 ldx #$40
 !:
