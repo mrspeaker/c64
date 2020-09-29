@@ -2,13 +2,7 @@
 
 entry:
                 jsr init
-loop:
-                lda #0
-!:
-                cmp $d012
-                bne !-
-                jsr update
-                jmp loop
+                jmp *
 
 init:
                 sei
@@ -25,11 +19,15 @@ init:
                 lda $dc0d               // cancel all CIA-IRQs in queue/unprocessed
                 lda $dd0d
 
-                lda #%00000100 // enable spr-spr collision
+                lda #%00000001 // enable raster
                 sta $d01a
                 sta $d019
-                lda $d01e
 
+                lda #40
+                sta $d012
+                lda $d011
+                and #$7f
+                sta $d011
 
                 lda #<irq
                 ldx #>irq
@@ -37,23 +35,26 @@ init:
                 stx $315
 
                 cli
-
                 rts
 irq:
+                lda $d019
+                ora #%00000001
+                sta $d019
+
                 dec $d020
 
-                lda $d019
-                ora #%00000100
-                sta $d019
+                jsr update
 
                 lda $d01e
                 and #%00000001
                 beq !+
 
+                dec $d020
                 lda $dc04
                 eor $dc05
                 sta $d003
 !:
+                inc $d020
                 pla
                 tay
                 pla
@@ -78,7 +79,7 @@ init_sprites:
                 sta $7f8
                 sta $7f9
 
-                lda #70
+                lda #60
                 sta $d002
                 sta $d003
                 lda #20
