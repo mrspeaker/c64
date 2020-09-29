@@ -7,7 +7,7 @@ entry:
                 lda #$7f
                 sta $dc0d               // Disable CIA #1
 
-                lda #%01110100          // Enable sprite collision irq
+                lda #%11110100          // Enable sprite collision irq
                 sta $d01a
 
                 lda #<irq
@@ -21,8 +21,18 @@ entry:
 
 irq:
                 dec $d020
-                dec $d019
-                lda $d01e               // Have to read D01E after dec D019
+
+                lda $d019
+                ora #%00000100
+                sta $d019
+
+                // lda #3           // Load/store does not work...
+                // sta $d01e
+
+                lda $d01e          // Have to just read it to clear and enable?
+
+                // lda #3
+                // sta $d01e
 
                 pla
                 tay
@@ -30,6 +40,7 @@ irq:
                 tax
                 pla
                 rti
+
 
 init_sprites:
                 lda #%00000011

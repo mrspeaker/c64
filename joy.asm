@@ -25,9 +25,11 @@ init:
                 lda $dc0d               // cancel all CIA-IRQs in queue/unprocessed
                 lda $dd0d
 
-                lda #%00000100
+                lda #%00000100 // enable spr-spr collision
                 sta $d01a
                 sta $d019
+                lda $d01e
+
 
                 lda #<irq
                 ldx #>irq
@@ -40,6 +42,10 @@ init:
 irq:
                 dec $d020
 
+                lda $d019
+                ora #%00000100
+                sta $d019
+
                 lda $d01e
                 and #%00000001
                 beq !+
@@ -48,7 +54,6 @@ irq:
                 eor $dc05
                 sta $d003
 !:
-                asl $d019
                 pla
                 tay
                 pla
