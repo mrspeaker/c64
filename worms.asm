@@ -170,5 +170,5 @@ spr_off:        .byte 0,-15,-24,-15,0,15,24,15,0
 scrx:           .byte 0
 scrx_off:       .byte 0,1,2,3,3,2,1
 sprites:
-                .import binary "worm.bin"
+                .import binary "worms_sprites.bin"
                 .fill 64, $55

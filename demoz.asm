@@ -5,7 +5,6 @@ entry:
 
                 lda #0
                 sta $d021
-                ///sta $d011
 main:
                 lda #0
                 sta $d020
@@ -17,29 +16,54 @@ main:
                 sta $D001
 
 bars:
-                ldy #52
                 // wait for line
-                lda #$80
+                lda #$70
 !:
                 cmp $d012
                 bne !-
 
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+
+                ldy #52
 line:
                 lda colors,y
                 sta $d020 // 6
                 sta $d021 // 6
 
                 // waste cycles
-                ldx #$8
+                ldx #$7
 !:
                 dex
                 bne !-
 
                 nop
                 nop
+                nop
                 //nop
-                //nop
-                bit $fe
+                //bit $fe
 
                 dey
                 bne line
