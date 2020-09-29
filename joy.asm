@@ -137,8 +137,8 @@ noWrap:
                 stx $d001
 
                 lda $dc00 // bits: 0=up,1=down,2=left,3=right,4=fire
-                lsr       // if bit 0 was 1, it's rotated to carry
-                bcs down  // so carry will be set?
+                lsr       // if bit 0 was 0 (active low), it's rotated to carry
+                bcs down  // so carry will be clear if pressed
                 dec player_y
 down:
                 lsr
