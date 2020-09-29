@@ -14,6 +14,8 @@ entry:
 //                 cmp $d012
 //                 sty $d015
 //                 bne sync
+                cli
+                rts
 
 scan:
                 ldx #$31

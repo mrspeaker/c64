@@ -1,3 +1,17 @@
+/*
+   This is testing reacting to sprite v sprite IRQ.
+   Not that you'd really ever want to do that for real
+   (just poll $D01e once a frame), but just for testing.
+
+   One thing I discovered: you MUST read $D01e before
+   the IRQ will fire, and also must read it after every
+   $D019 IRQ ack... to re-enable it.
+
+   The memory map says "Write: Enable further detection
+   of sprite-sprite collisions." but I found that it has
+   to be a read. (Maybe I misunderstand this)
+*/
+
             BasicUpstart2(entry)
 
 entry:
@@ -28,7 +42,6 @@ irq:
 
                 // lda #3           // Load/store does not work...
                 // sta $d01e
-
                 lda $d01e          // Have to just read it to clear and enable?
 
                 // lda #3

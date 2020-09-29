@@ -1,4 +1,4 @@
-.var picture1 = LoadBinary("untitled.kla", BF_KOALA)
+.var picture1 = LoadBinary("mrspeaker1.kla", BF_KOALA)
 
             BasicUpstart2(entry)
 
@@ -142,6 +142,6 @@ xoffi:          .byte 7
 cols:           .byte 11,12,15,3,3,15,12,11
 spr:            .fill 64, $aa
 
- * = $0c00 "ScreenRam_1"; screenRam_1: .fill picture1.getScreenRamSize(), picture1.getScreenRam(i)
- * = $1c00 "ColorRam_1"; colorRam_1: .fill picture1.getColorRamSize(), picture1.getColorRam(i)
- * = $2000 "Bitmap_1"; bitMap_1: .fill picture1.getBitmapSize(), picture1.getBitmap(i)
+ * = $0c00 "ScreenRam1"; screenRam1: .fill picture1.getScreenRamSize(), picture1.getScreenRam(i)
+ * = $1c00 "ColorRam1"; colorRam1: .fill picture1.getColorRamSize(), picture1.getColorRam(i)
+ * = $2000 "Bitmap1"; bitMap1: .fill picture1.getBitmapSize(), picture1.getBitmap(i)
