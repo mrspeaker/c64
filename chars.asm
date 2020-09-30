@@ -20,7 +20,7 @@ setCharMem:
                 lda $d018
                 and #%11110001
                 ora #%00001000
-                sta $d018 // locate chars at $2000
+                sta $d018               // locate chars at $2000
 
                 lda #<$2000
                 sta $fb
@@ -40,6 +40,7 @@ _copyFF2:
                 sta ($fb),y
                 iny
                 bne _copyFF2
+
                 rts
 
             // === Cycle Colors ===
@@ -98,7 +99,7 @@ coloff:         .byte $0
 msg:            .text " 1234567890! mr speaker! "
                 .byte 0
 ch:
-#import "ch1.asm"
+  #import "ch1.asm"
 
 ch2:
-#import "ch2.asm"
+  #import "ch2.asm"

@@ -17,7 +17,6 @@ init:
 
                 jsr init_sprites
 
-
                 lda #%01111111
                 sta $dc0d               // Turn off CIAs Timer interrupts
                 sta $dd0d
