@@ -9,6 +9,7 @@ entry:
                 sta $d020
                 sta $d021
 
+                //
                 lda $d016
                 ora #%00010000
                 sta $d016
@@ -17,7 +18,7 @@ entry:
                 jsr copyChars
                 jsr init_sprites
 
-                // char cols
+                // char multicolor cols
                 lda #7
                 sta $D022
                 lda #11
@@ -48,23 +49,12 @@ copyScreenMem:
 
                 ldx #$ff
 !:
-                lda map_data,x
-                sta $400,x
-                lda map_data+$ff,x
-                sta $400+$ff,x
-                lda map_data+$ff*2,x
-                sta $400+$ff*2,x
-                lda map_data+$ff*3,x
-                sta $400+$ff*3,x
-
-                lda map_colour_data,x
-                sta $d800,x
-                lda map_colour_data+$ff,x
-                sta $d800+$ff,x
-                lda map_colour_data+$ff*2,x
-                sta $d800+$ff*2,x
-                lda map_colour_data+$ff*3,x
-                sta $d800+$ff*3,x
+            .for(var i = 0;i < 4; i++) {
+                lda map_data+$ff*i,x
+                sta $400+$ff*i,x
+                lda map_colour_data+$ff*i,x
+                sta $d800+$ff*i,x
+            }
                 dex
                 bne !-
 
@@ -219,7 +209,6 @@ irq:
                 pla
                 rti
 
-                rti
 
 player_x:       .byte 20
 player_y:       .byte 110
