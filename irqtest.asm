@@ -29,6 +29,7 @@ entry:
 
 irq:
                 dec $d019
+                nop
                 dec $d020
 
                 lda $d012

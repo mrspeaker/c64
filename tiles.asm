@@ -64,7 +64,7 @@ copyChars:
                 lda $d018
                 and #%11110001
                 ora #%00001010
-                sta $d018               // locate chars at $1000
+                sta $d018               // locate chars at $2800
 
                 lda #<$2800
                 sta $fb
