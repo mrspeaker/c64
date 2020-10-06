@@ -6,6 +6,8 @@
             .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
 
             .label a = $fc
+
+            .const NUM_PEEPS = 3
 entry:
 
                 jsr init
@@ -14,12 +16,13 @@ entry:
                 jsr init_sprites
 loop:
 
+                // TODO: just make this an IRQ
                 lda $d012
                 cmp #10
                 bne loop
 
                 jsr update_peeps
-
+                jsr rotate_water
 
 !:
                 lda $d012
@@ -35,7 +38,7 @@ init:
                 rts
 
 init_sprites:
-                lda #3
+                lda #%00000111
                 sta $d015
                 sta $d01c
 
@@ -46,6 +49,7 @@ init_sprites:
                 lda #1
                 sta $d027
                 sta $d028
+                sta $d029
 
                 ldx #64
 !:
@@ -57,6 +61,7 @@ init_sprites:
                 lda #$340/64
                 sta $7f8
                 sta $7f9
+                sta $7fa
 
                 rts
 
@@ -84,9 +89,7 @@ draw_screen:
 
 
 update_peeps:
-                        // Add move
-
-                ldx #1
+                ldx #NUM_PEEPS-1
 !:
                 lda p_dir,x
                 beq sub
@@ -98,7 +101,7 @@ update_peeps:
                 adc #0
                 sta p_x_hi,x
 
-                cmp #$41
+                cmp p_x_max,x
                 bmi don
                 lda #0
                 sta p_dir,x
@@ -110,7 +113,7 @@ sub:
                 lda p_x_hi,x
                 sbc #0
                 sta p_x_hi,x
-                cmp #$29
+                cmp p_x_min,x
                 bpl don
                 lda #1
                 sta p_dir,x
@@ -119,38 +122,49 @@ don:
                 dex
                 bpl !-
 store_spr:
-                // spr 1
-                lda p_x_lo+1            // X vals are 16 bit, 9.7 fixed point (9th bit is MSB sprite X)
-                asl                     // ... carry has the highest bit of our low byte
-                lda p_x_hi+1
-                rol                     // shifts the Carry flag (bit 8) into place, making A the low 8
+                .for(var i=NUM_PEEPS-1;i>=0;i--) {
+                    lda p_x_lo+i        // X vals are 16 bit, 9.7 fixed point (9th bit is MSB sprite X)
+                    asl                 // ... carry has the highest bit of our low byte
+                    lda p_x_hi+i
+                    rol                 // shifts the Carry flag (bit 8) into place, making A the low 8
                                         // bits of the 9-bit pixel coordinate
-                sta $d002
-                rol $d010
-                lda p_y+1
-                sta $d003
+                    sta $d000+(i*2)
+                    rol $d010
+                    lda p_y+i
+                    sta $d001+(i*2)
+                }
+                rts
 
-                // spr 0
-                lda p_x_lo
-                asl
-                lda p_x_hi
-                rol
+rotate_water:
+                lda wav_lo
+                clc
+                adc #40
+                sta wav_lo
+                bcc !+
 
-                sta $d000
-                rol $d010
+                ldy ADDR_CHARSET_DATA+(87*8)+7
+                ldx #7
+rot:
+                lda ADDR_CHARSET_DATA+(87*8),x
+                sta ADDR_CHARSET_DATA+(87*8)+1,x
+                dex
+                bpl rot
+                sty ADDR_CHARSET_DATA+(87*8)
 
-                lda p_y
-                sta $d001
-
+!:
                 rts
 peeps:
 
-p_dir:          .byte 1,1
-p_x_lo:         .byte 0,0
-p_x_hi:         .byte $2e, $75
-p_y:            .byte $b5, $35
-p_sp:           .byte 40,30
+p_dir:          .byte 1,1,0
+p_x_lo:         .byte 0,0,0
+p_x_hi:         .byte $2e, $75, $20
+p_x_min:        .byte $29, $29, $12
+p_x_max:        .byte $41, $75, $25
+p_y:            .byte $b5, $35, $65
+p_sp:           .byte 40,30,20
 
+wav_lo:         .byte 0
+wav_hi:         .byte 0
 
 sprite_0:
 .byte %00000000,%00000000,%00000000
