@@ -5,7 +5,7 @@
             .label ADDR_CHAR_MAP_COLOUR_DATA  = $1be8 // label = 'map_colour_data'     (size = $03e8).
             .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
 
-            .label a = $fc
+            .label tmp = $fc
 
             .const NUM_PEEPS = 3
 entry:
@@ -22,6 +22,8 @@ loop:
                 bne loop
 
                 jsr update_peeps
+                jsr update_ball
+                jsr position_sprites
                 jsr rotate_water
 
 !:
@@ -38,7 +40,7 @@ init:
                 rts
 
 init_sprites:
-                lda #%00000111
+                lda #%00001111
                 sta $d015
                 sta $d01c
 
@@ -50,6 +52,8 @@ init_sprites:
                 sta $d027
                 sta $d028
                 sta $d029
+                lda #7
+                sta $d02a
 
                 ldx #64
 !:
@@ -62,6 +66,7 @@ init_sprites:
                 sta $7f8
                 sta $7f9
                 sta $7fa
+                sta $7fb
 
                 rts
 
@@ -74,7 +79,6 @@ copy_chars:
 
 draw_screen:
                 ldx #0
-
 !:
                 .for (var i=0; i<4;i++) {
                     lda map_data+(i * $FF), x
@@ -117,11 +121,70 @@ sub:
                 lda #1
                 sta p_dir,x
 don:
-
                 dex
                 bpl !-
-store_spr:
-                .for(var i=NUM_PEEPS-1;i>=0;i--) {
+                rts
+
+update_ball:
+
+set_x:
+                lda b_vel_x
+                beq update_grav
+
+                // Add signed byte to 16 bit
+	            clc
+	            //tax	// just get N flag of Accumulator, if already set skip this
+	            bpl posi
+	            dec p_x_hi+3
+posi:           adc p_x_lo+3
+	            sta p_x_lo+3
+	            bcc nover
+	            inc p_x_hi+3
+nover:
+
+friction:
+                dec b_vel_x
+                bne update_grav
+                lda #$ff
+                sta b_vel_x
+
+update_grav:
+                lda #$ff
+                sec
+                sbc b_vel_x
+                lsr
+                lsr
+                lsr
+                lsr
+                sta grav
+
+set_y:
+                lda b_vel_y
+gravity:
+                clc
+                adc grav
+                sta b_vel_y
+
+                ldx #7
+!:
+                lda b_vel_y
+	            clc	// clear carry, if already clear skip this
+	            //tax	// just get N flag of Accumulator, if already set skip this
+                tay
+	            bpl posi2
+	            dec p_y+3
+posi2:          adc p_y_lo+3
+	            sta p_y_lo+3
+	            bcc nover2
+	            inc p_y+3
+nover2:
+                dex
+                bne !-
+done:
+                rts
+
+position_sprites:
+                .for(var i=NUM_PEEPS;i>=0;i--) {
                     lda p_x_lo+i        // xpos is 16-bit, 9.7 fixed point (9th bit is MSB sprite X)
                     asl                 // ... carry has the highest bit of our low byte
                     lda p_x_hi+i
@@ -132,6 +195,7 @@ store_spr:
                     lda p_y+i
                     sta $d001+(i*2)
                 }
+
                 rts
 
 rotate_water:
@@ -171,12 +235,20 @@ get_tile:
 peeps:
 
 p_dir:          .byte 1,1,0
-p_x_lo:         .byte 0,0,0
-p_x_hi:         .byte $2e, $75, $20
+p_x_lo:         .byte 0,0,0,0
+p_x_hi:         .byte $2e, $75, $20, $50
 p_x_min:        .byte $29, $29, $12
 p_x_max:        .byte $41, $7d, $25
-p_y:            .byte $b5, $35, $65
+p_y:            .byte $b5, $35, $65, $70
+p_y_lo:         .byte 0,0,0,0
 p_sp:           .byte 25,30,20
+
+grav:           .byte $1
+b_vel_x:        .byte $ff
+b_vel_y:        .byte $ff/2
+
+b_acc_x:        .byte $ff
+b_acc_y:        .byte %0 //11101100
 
 wav_lo:         .byte 0
 wav_hi:         .byte 0
