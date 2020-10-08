@@ -38,20 +38,32 @@ irq:
                 rti
 
 init:
-                lda #0
-                sta $d020
-                sta $d021
                 rts
 
 init_sprites:
-                lda #%00000001
+                lda #%11111111
                 sta $d015
 
+                ldx #7
+!:
                 lda #1
-                sta $d027
+                sta $d027,x
 
                 lda #$340/64
-                sta $7f8
+                sta $7f8,x
+
+                // rando sprite locations
+                txa
+                asl
+                tay
+                lda $dc04
+                rol
+                sta $d000,y
+                eor $dc05
+                rol
+                sta $d001,y
+                dex
+                bpl !-
 
                 ldx #64*2
 !:
@@ -68,7 +80,7 @@ update_sprites:
                 // c n ac       hi       lo
                 // - - -------- -------- --------
                 // 0            00000001 00000000
-                // 0 1 10000001                   ; lda #81
+                // 0 1 10000001                   ; lda #81 (-126?)
                 //   1                            ; bpl = false
                 //              00000000          ; dec x+1
                 // 0   10000001                   ; adc x
@@ -137,6 +149,14 @@ anim:
                 sta $7f8
 !:
 
+                ldx #$0e
+!:
+
+                dec $d001,x
+                dex
+                dex
+                bne !-
+
                 rts
 
 draw_sprites:
@@ -159,6 +179,12 @@ draw_sprites:
                 sta $d000
                 rol $d010
 
+                // fix other sprites to LSB
+                lda $d010
+                and #%00000001
+                sta $d010
+
+
                 // Y pos
                 lda y+1
                 sta $d001
@@ -171,10 +197,6 @@ spx:            .byte $60
 spy:            .byte $70
 spt:            .byte 0
 spf:            .byte 0
-
-vx:             .byte $5
-vy:             .byte $0
-
 
 spr:
                 .byte $00,$00,$00,$00,$00,$00,$00,$00
