@@ -53,7 +53,7 @@ init_sprites:
                 lda #$340/64
                 sta $7f8
 
-                ldx #64
+                ldx #64*2
 !:
                 lda spr,x
                 sta $340,x
@@ -68,7 +68,7 @@ update_sprites:
                 // c n ac       hi       lo
                 // - - -------- -------- --------
                 // 0            00000001 00000000
-                // 0 1 10000001                   ; lda #7f
+                // 0 1 10000001                   ; lda #81
                 //   1                            ; bpl = false
                 //              00000000          ; dec x+1
                 // 0   10000001                   ; adc x
@@ -85,6 +85,7 @@ update_sprites:
 	            inc x+1
 !nover:
 
+                // update y
                 clc
                 lda spy
                 bpl !pos+
@@ -121,10 +122,25 @@ yrnd:
                 sta spy
 !:
 
+anim:
+                clc
+                lda spt
+                adc #20
+                sta spt
+                bcc !+
+                lda spf
+                eor #1
+                sta spf
+                clc
+                lda #$340/64
+                adc spf
+                sta $7f8
+!:
+
                 rts
 
 draw_sprites:
-                // Sprites are fixed point 9.7 format
+                // Sprite X pos are fixed point 9.7 format:
                 // |16 = MSB|next 8 bits = hi|next 7 bits = fractional|
 
                 // c M hi      8 lo      ; carry | sprite MSB | hi | 8th bit for hi | lo 7bits |
@@ -143,6 +159,7 @@ draw_sprites:
                 sta $d000
                 rol $d010
 
+                // Y pos
                 lda y+1
                 sta $d001
 
@@ -152,6 +169,8 @@ x:              .byte $00, $40
 y:              .byte $00, $61
 spx:            .byte $60
 spy:            .byte $70
+spt:            .byte 0
+spf:            .byte 0
 
 vx:             .byte $5
 vy:             .byte $0
@@ -165,4 +184,13 @@ spr:
                 .byte $90,$08,$00,$10,$08,$00,$10,$04
                 .byte $00,$20,$04,$00,$20,$02,$00,$40
                 .byte $01,$81,$80,$00,$7e,$00,$00,$00
+                .byte $00,$00,$00,$00,$00,$00,$00,$01
+
+                .byte $00,$00,$00,$00,$00,$00,$00,$00
+                .byte $00,$00,$7e,$00,$01,$81,$80,$02
+                .byte $00,$40,$04,$0e,$20,$04,$03,$20
+                .byte $08,$03,$10,$08,$01,$90,$08,$00
+                .byte $90,$08,$00,$10,$04,$00,$10,$04
+                .byte $00,$20,$02,$00,$20,$01,$00,$40
+                .byte $00,$c1,$80,$00,$3e,$00,$00,$00
                 .byte $00,$00,$00,$00,$00,$00,$00,$01
