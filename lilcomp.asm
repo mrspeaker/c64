@@ -148,14 +148,14 @@ friction:
                 sta b_vel_x
 
 update_grav:
-                lda #$ff
-                sec
-                sbc b_vel_x
-                lsr
-                lsr
-                lsr
-                lsr
-                sta grav
+                // lda #$ff
+                // sec
+                // sbc b_vel_x
+                // lsr
+                // lsr
+                // lsr
+                // lsr
+                // sta grav
 
 set_y:
                 lda b_vel_y
