@@ -1,17 +1,17 @@
-            BasicUpstart2(entry)
+        BasicUpstart2(entry)
 
 
-            .label ADDR_CHAR_MAP_DATA         = $1800 // label = 'map_data'            (size = $03e8).
-            .label ADDR_CHAR_MAP_COLOUR_DATA  = $1be8 // label = 'map_colour_data'     (size = $03e8).
-            .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
+        .label ADDR_CHAR_MAP_DATA         = $1800 // label = 'map_data'            (size = $03e8).
+        .label ADDR_CHAR_MAP_COLOUR_DATA  = $1be8 // label = 'map_colour_data'     (size = $03e8).
+        .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
 
-            .label tmp = $fc
+        .label tmp = $fc
 
-            .const NUM_PEEPS = 3
+        .const NUM_PEEPS = 3
 entry:
 
-                jsr init
-                jsr copy_chars
+        jsr init
+        jsr copy_chars
                 jsr draw_screen
                 jsr init_sprites
 loop:
@@ -80,16 +80,16 @@ copy_chars:
 draw_screen:
                 ldx #0
 !:
-                .for (var i=0; i<4;i++) {
-                    lda map_data+(i * $FF), x
-                    sta $400+(i*$FF),x
-                    lda map_colour_data+(i * $FF),x
-                    sta $D800+(i * $FF),x
-                }
-                inx
-                bne !-
+        .for (var i=0; i<4;i++) {
+            lda map_data+(i * $FF), x
+            sta $400+(i*$FF),x
+            lda map_colour_data+(i * $FF),x
+            sta $D800+(i * $FF),x
+        }
+        inx
+        bne !-
 
-                rts
+        rts
 
 
 update_peeps:

@@ -1,9 +1,15 @@
+/*
+   moving sprites in joystick any dir
+   using signed-bytes for velocity.
+*/
+
             BasicUpstart2(entry)
 
 entry:
                 jsr init
                 jsr init_sprites
 
+        sei
                 lda #$7f
                 sta $dc0d
                 lda $dc0d
@@ -21,12 +27,13 @@ entry:
                 sta $314
                 lda #>irq
                 sta $315
-
+        cli
                 jmp *
 
 irq:
                 dec $d019
 
+                jsr read_joy
                 jsr update_sprites
                 jsr draw_sprites
 
@@ -38,6 +45,43 @@ irq:
                 rti
 
 init:
+                rts
+
+read_joy:
+                lda $dc00
+                lsr
+                bcs down
+                ldx #-50
+                stx spy
+                ldx #0
+                stx spx
+
+down:
+                lsr
+                bcs left
+                ldx #50
+                stx spy
+                ldx #0
+                stx spx
+
+left:
+                lsr
+                bcs right
+                ldx #-50
+                stx spx
+                ldx #0
+                stx spy
+
+right:
+                lsr
+                bcs !+
+                ldx #50
+                stx spx
+                ldx #0
+                stx spy
+
+!:
+
                 rts
 
 init_sprites:
@@ -87,6 +131,8 @@ update_sprites:
                 //                       10000001 ; sta x ?
                 //                                ; bcc = true
 
+                ldx #3
+!:
                 clc
                 lda spx
 	            bpl !pos+
@@ -107,8 +153,9 @@ update_sprites:
                 sta y
                 bcc !nover+
                 inc y+1
-
 !nover:
+                dex
+                bpl !-
 
 xrnd:
                 lda $dc04
@@ -171,7 +218,7 @@ draw_sprites:
                 // 1 1 0000000           ; lda x+1
                 // 1 0 0000001           ; rol (grab 8th bit from lo, put MSB in carry)
                 // x = 0000001           ; sta $d000
-                // msb = carry           ; rol $d010 (roll MSB into bit #1 of vic)
+                // msb = carry           ; rol $d010 (roll MSB (carry) into bit #1 of vic)
                 lda x
                 asl
                 lda x+1
