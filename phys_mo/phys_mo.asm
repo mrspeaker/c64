@@ -45,14 +45,9 @@ init_sprites:
         sta $d027
 
         lda #$340/64
-        sta $7f8
-        sta $7f9
-        sta $7fa
-        sta $7fb
-        sta $7fc
-        sta $7fd
-        sta $7fe
-        sta $7ff
+        .for (var i=0;i<8;i++) {
+            sta $7f8+i
+        }
 
         ldx #64
 !:
@@ -89,7 +84,7 @@ get_moves:
         lda $dc00
 up:     lsr
         bcs down
-        ldx #-1
+        ldx #-3
         .for(var i=0;i<8;i++){
            stx ay+i
         }
@@ -101,13 +96,13 @@ down:   lsr
         }
 left:   lsr
         bcs right
-        ldx #-1
+        ldx #-3
          .for(var i=0;i<8;i++){
            stx ax+i
         }
 right:  lsr
         bcs !done+
-        ldx #1
+        ldx #3
          .for(var i=0;i<8;i++){
            stx ax+i
         }
@@ -159,6 +154,34 @@ yy:
 !nover:
         dey
         bpl !rep-
+
+friction_y:
+        clc
+        lda vy,x
+        beq !++
+        bmi !+
+        // pos
+        sec
+        sbc #2
+!:
+        // neg
+        adc #1
+!:
+        sta vy,x
+
+friction_x:
+        clc
+        lda vx,x
+        beq !++
+        bmi !+
+        // pos
+        sec
+        sbc #2
+!:
+        // neg
+        adc #1
+!:
+        sta vx,x
 
         rts
 
@@ -232,12 +255,12 @@ draw_sprites:
         }
         rts
 
-x:      .byte 0,0,0,0,0,0,0,0
+x:      .fill 8, 0
 x_hi:   .fill 8, i*10+50
-y:      .byte 0,0,0,0,0,0,0,0
+y:      .fill 8, 0
 y_hi:   .fill 8, round(random()*20)+60
-vx:     .byte 0,0,0,0,0,0,0,0
-vy:     .byte 0,0,0,0,0,0,0,0
+vx:     .fill 8, 0
+vy:     .fill 8, 0
 ax:     .fill 8, round(random()*70)-35
 ay:     .fill 8, round(random()*40)-20
 
