@@ -165,6 +165,7 @@ friction_y:
         sbc #2
 !:
         // neg
+        clc
         adc #1
 !:
         sta vy,x
@@ -172,15 +173,14 @@ friction_y:
 friction_x:
         clc
         lda vx,x
-        beq !++
-        bmi !+
-        // pos
+        beq !zero+
+        bmi !minus+
         sec
         sbc #2
-!:
-        // neg
+!minus:
+        clc
         adc #1
-!:
+!zero:
         sta vx,x
 
         rts
