@@ -169,15 +169,8 @@ wall_r:
         adc #1
         sta vx
 wall_t:
-        // y should be treated as 9.7 too right?
-        // otherwise it will have more fractional and
-        // update slower?
         clc
-        //lda y
-        //asl
         lda y_hi
-        //rol
-        //bcs wall_b
         cmp #45
         bcs wall_b
         // bounce
