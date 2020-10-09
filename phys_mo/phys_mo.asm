@@ -1,6 +1,6 @@
         BasicUpstart2(entry)
 
-        .const PHYS_REPS = 8
+        .const PHYS_REPS = 5
 
 entry:
         jsr init
@@ -24,8 +24,11 @@ init_irq:
         sta $dc0d
         lda $dc0d
 
-        lda #20
+        lda #$b0
         sta $d012
+        lda $d011
+        and #%11111110
+        sta $d011
 
         lda #<irq
         ldx #>irq
@@ -35,7 +38,7 @@ init_irq:
         rts
 
 init_sprites:
-        lda #%00000001
+        lda #%11111111
         sta $d015
 
         lda #1
@@ -43,6 +46,13 @@ init_sprites:
 
         lda #$340/64
         sta $7f8
+        sta $7f9
+        sta $7fa
+        sta $7fb
+        sta $7fc
+        sta $7fd
+        sta $7fe
+        sta $7ff
 
         ldx #64
 !:
@@ -54,11 +64,19 @@ init_sprites:
         rts
 
 irq:
+       // inc $d020
         dec $d019
+
         jsr get_moves
+        ldx #7
+!:
         jsr update_phys
         jsr wall_collisions
+        dex
+        bpl !-
+
         jsr draw_sprites
+       // dec $d020
 
         pla
         tay
@@ -72,66 +90,74 @@ get_moves:
 up:     lsr
         bcs down
         ldx #-1
-        stx ay
+        .for(var i=0;i<8;i++){
+           stx ay+i
+        }
 down:   lsr
         bcs left
         ldx #1
-        stx ay
+        .for(var i=0;i<8;i++){
+           stx ay+i
+        }
 left:   lsr
         bcs right
         ldx #-1
-        stx ax
+         .for(var i=0;i<8;i++){
+           stx ax+i
+        }
 right:  lsr
         bcs !done+
         ldx #1
-        stx ax
+         .for(var i=0;i<8;i++){
+           stx ax+i
+        }
 !done:
         rts
 
 update_phys:
 
 xx:
-        lda vx
+        lda vx,x
         clc
-        adc ax
-        sta vx
+        adc ax,x
+        sta vx,x
         lda #0
-        sta ax
+        sta ax,x
 
-        ldx #PHYS_REPS
+        ldy #PHYS_REPS
 !rep:
         clc
-        lda vx
+        lda vx,x
         bpl !pos+
-        dec x_hi
-!pos:   adc x
-        sta x
+        dec x_hi,x
+!pos:   adc x,x
+        sta x,x
         bcc !nover+
-        inc x_hi
+        inc x_hi,x
 !nover:
-        dex
+        dey
         bpl !rep-
 
 yy:
-        lda vy
+        lda vy,x
         clc
-        adc ay
-        sta vy
+        adc ay,x
+        sta vy,x
         lda #2
-        sta ay
+        sta ay,x
 
-        ldx #PHYS_REPS
+        ldy #PHYS_REPS*2 // um, why * 2?
 !rep:
         clc
-        lda vy
+        lda vy,x
         bpl !pos+
-        dec y_hi
-!pos:   adc y
-        sta y
+        dec y_hi,x
+!pos:   adc y,x
+        sta y,x
         bcc !nover+
-        inc y_hi
+        inc y_hi,x
 !nover:
-        dex
+        dey
         bpl !rep-
 
         rts
@@ -139,9 +165,9 @@ yy:
 wall_collisions:
         clc
 
-        lda x // 9.7!
+        lda x,x // 9.7!
         asl
-        lda x_hi
+        lda x_hi,x
         rol
         bcs wall_r
         cmp #20
@@ -149,66 +175,72 @@ wall_collisions:
 
         // bounce
         clc
-        lda vx
+        lda vx,x
         eor #$ff
         adc #1
-        sta vx
+        sta vx,x
         jmp wall_t
 wall_r:
         cmp #70
         bmi wall_t
         // bounce
         clc
-        lda vx
+        lda vx,x
         eor #$ff
         adc #1
-        sta vx
+        sta vx,x
 wall_t:
         clc
-        lda y_hi
+        lda y_hi,x
         cmp #45
         bcs wall_b
         // bounce
         clc
-        lda vy
+        lda vy,x
         eor #$ff
         adc #1
-        sta vy
+        sta vy,x
         jmp wall_done
 wall_b:
-        cmp #240
+        cmp #230
         bcc wall_done
         // bounce
         clc
-        lda vy
+        lda vy,x
         eor #$ff
         adc #1
-        sta vy
+        sta vy,x
+        lda #228
+        sta y_hi,x
 wall_done:
         rts
 
 draw_sprites:
         // sprites X pos: fixed-point 9.7
-        lda x
-        asl
-        lda x_hi
-        rol
-        sta $d000
-        rol $d010
+        lda #%00000000
+        sta $d010
+        .for (var i = 7; i >= 0; i--) {
+            lda x+i
+            asl
+            lda x_hi+i
+            rol
+            sta $d000+i*2
+            rol $d010
 
-        lda y_hi
-        sta $d001
-
+            lda y_hi+i
+            sta $d001+i*2
+        }
         rts
 
-x:      .byte 0
-x_hi:   .byte 80
-y:      .byte 0
-y_hi:   .byte 80
-vx:     .byte 0
-vy:     .byte 0
-ax:     .byte 40
-ay:     .byte 40
+x:      .byte 0,0,0,0,0,0,0,0
+x_hi:   .fill 8, i*10+50
+y:      .byte 0,0,0,0,0,0,0,0
+y_hi:   .fill 8, round(random()*20)+60
+vx:     .byte 0,0,0,0,0,0,0,0
+vy:     .byte 0,0,0,0,0,0,0,0
+ax:     .fill 8, round(random()*70)-35
+ay:     .fill 8, round(random()*40)-20
+
 
 spr:
 #import "../res/sprites/bubble.asm"
