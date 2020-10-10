@@ -1,43 +1,62 @@
         BasicUpstart2(entry)
 
-
         .label ADDR_CHAR_MAP_DATA         = $1800 // label = 'map_data'            (size = $03e8).
         .label ADDR_CHAR_MAP_COLOUR_DATA  = $1be8 // label = 'map_colour_data'     (size = $03e8).
         .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
 
-        .label tmp = $fc
-
         .const NUM_PEEPS = 3
 entry:
+        lda #$0
+        sta $d020
+        sta $d021
 
-        jsr init
         jsr copy_chars
-                jsr draw_screen
-                jsr init_sprites
-loop:
+        jsr draw_screen
+        jsr init_sprites
+        jsr init_irq
+        jmp *
 
-                // TODO: just make this an IRQ
-                lda $d012
-                cmp #10
-                bne loop
+main:
+        jsr update_peeps
+        jsr update_ball
+        jsr position_sprites
+        jsr rotate_water
+        rts
 
-                jsr update_peeps
-                jsr update_ball
-                jsr position_sprites
-                jsr rotate_water
+init_irq:
+        sei
+        lda #$7f
+        sta $dc0d
+        lda $dc0d
 
-!:
-                lda $d012
-                cmp #11
-                bne !-
+        lda #1
+        sta $d01a
 
-                jmp loop
+        lda #<irq
+        ldx #>irq
+        sta $314
+        stx $315
 
-init:
-                lda #$0
-                sta $d020
-                sta $d021
-                rts
+        lda #20
+        sta $d012
+        lda $d011
+        and #%01111111
+        sta $d011
+
+        cli
+        rts
+
+irq:
+        dec $d020
+        dec $d019
+        inc $d020
+        jsr main
+        pla
+        tay
+        pla
+        tax
+        pla
+        rti
 
 init_sprites:
                 lda #%00001111
@@ -78,7 +97,7 @@ copy_chars:
                 sta $d018
 
 draw_screen:
-                ldx #0
+        ldx #0
 !:
         .for (var i=0; i<4;i++) {
             lda map_data+(i * $FF), x
