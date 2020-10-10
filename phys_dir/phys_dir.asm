@@ -5,10 +5,10 @@ init:
         jsr init_msg
         jsr init_irq
         jmp *
+
 main:
         jsr get_input
         jsr update_sprites
-        jsr wrap_sprites
         jsr draw_sprites
         rts
 
@@ -126,14 +126,6 @@ update_sprites:
 !nover: dex
         bpl !-
 
-        // Timer
-        clc
-        lda t
-        adc #$c0
-        sta t
-        bcc !+
-        //        dec dir
-!:
         rts
 
 draw_sprites:
@@ -153,27 +145,6 @@ draw_sprites:
         sta $d001
         rts
 
-wrap_sprites:
-        rts
-        clc
-        lda x
-        asl
-        lda x_hi
-        rol
-        bcc !left+
-        cmp #50
-        bmi !done+
-        dec $d020
-        lda #0
-        sta x_hi
-!left:
-        cmp #10
-        bpl !done+
-        lda #11
-        sta x_hi
-!done:
-        rts
-
 x:      .byte 0
 x_hi:   .byte 80
 y:      .byte 0
@@ -183,14 +154,8 @@ vx:     .byte 0
 vy:     .byte 0
 dir:    .byte 0
 
-t:      .byte 10
-
-lol:    .fill 50, $42
 dx:     .fill 256, cos(toRadians((360/256)*i))*127
-lol2:    .fill 50, $43
-
-dy:     .fill 256, sin(toRadians((360/256) * i))*127
-lol3:    .fill 50, $44
+dy:     .fill 256, sin(toRadians((360/256)*i))*127
 
 msg:    .text "steer with joyport 2"
         .byte 0
