@@ -84,8 +84,10 @@ left:   lsr
         bcs right
         dec dir
         dec dir
+        dec dir
 right:  lsr
         bcs done
+        inc dir
         inc dir
         inc dir
 done:
@@ -95,10 +97,8 @@ update_sprites:
         // set vy/vx from dir. testing.
         ldx dir
         lda dx,x
-        asl
         sta vx
         lda dy,x
-        asl
         sta vy
 
         // Apply vx/vy
@@ -185,8 +185,13 @@ dir:    .byte 0
 
 t:      .byte 10
 
-dx:     .fill 256, cos(toRadians((360/256) * i))*15
-dy:     .fill 256, sin(toRadians((360/256) * i))*15
+lol:    .fill 50, $42
+dx:     .fill 256, cos(toRadians((360/256)*i))*127
+lol2:    .fill 50, $43
+
+dy:     .fill 256, sin(toRadians((360/256) * i))*127
+lol3:    .fill 50, $44
+
 msg:    .text "steer with joyport 2"
         .byte 0
 spr:
