@@ -6,6 +6,15 @@
 
         .const NUM_PEEPS = 3
 
+        .const b_x_lo = p_x_lo+3
+        .const b_x_hi = p_x_hi+3
+        .const b_y_lo = p_y_lo+3
+        .const b_y_hi = p_y_hi+3
+        .const cursor_x_lo = p_x_lo+4
+        .const cursor_x_hi = p_x_hi+4
+        .const cursor_y_lo = p_y_lo+4
+        .const cursor_y_hi = p_y_hi+4
+
 entry:
         lda #$0
         sta $d020
@@ -18,8 +27,10 @@ entry:
         jmp *
 
 main:
+        jsr get_input
         jsr update_peeps
         jsr update_phys
+        jsr update_cursor
         jsr position_sprites
         jsr rotate_water
         rts
@@ -60,7 +71,7 @@ irq:
         rti
 
 init_sprites:
-        lda #%00001111
+        lda #%00011111
         sta $d015
         sta $d01c
 
@@ -69,7 +80,7 @@ init_sprites:
         lda #$4
         sta $d026
         lda #1
-        .for(var i=0;i<NUM_PEEPS+1;i++){
+        .for(var i=0;i<NUM_PEEPS+2;i++){
             sta $d027+i
         }
         lda #7
@@ -82,7 +93,7 @@ init_sprites:
         bpl !-
 
         lda #$340/64
-        .for(var i=0;i<NUM_PEEPS+1;i++){
+        .for(var i=0;i<NUM_PEEPS+2;i++){
             sta $7f8+i
         }
         rts
@@ -105,9 +116,28 @@ draw_screen:
         }
         inx
         bne !-
-
         rts
 
+
+get_input:
+        lda $dc00
+up:     lsr
+        bcs down
+down:   lsr
+        bcs left
+left:   lsr
+        bcs right
+        dec cursor_dir
+right:  lsr
+        bcs fire
+        inc cursor_dir
+fire:   lsr
+        bcs !done+
+        lda state
+        cmp #1
+        bne !done+
+        jsr take_a_shot
+!done:  rts
 
 update_peeps:
         ldx #NUM_PEEPS-1
@@ -168,7 +198,7 @@ yy:
         clc
         adc acc_y
         sta vel_y
-        lda #2
+        lda #0
         sta acc_y
 
         clc
@@ -184,8 +214,34 @@ yy:
 !done:
         rts
 
+update_cursor:
+        lda b_x_lo
+        sta cursor_x_lo
+        lda b_x_hi
+        sta cursor_x_hi
+        and #%01111111
+        lda b_y_lo
+        sta cursor_y_lo
+        lda b_y_hi
+        and #%01111111
+
+        sta cursor_y_hi
+
+        ldx cursor_dir
+        lda cursor_x_hi
+        clc
+        adc cos,x
+        sta cursor_x_hi
+
+        lda cursor_y_hi
+        clc
+        adc sin,x
+        sta cursor_y_hi
+
+        rts
+
 position_sprites:
-        .for(var i=NUM_PEEPS;i>=0;i--) {
+        .for(var i=NUM_PEEPS+1;i>=0;i--) {
             lda p_x_lo+i // xpos is 16-bit, 9.7 fixed point (9th bit is MSB sprite X)
             asl     // ... carry has the highest bit of our low byte
             lda p_x_hi+i
@@ -193,7 +249,11 @@ position_sprites:
                     // bits of the 9-bit pixel coordinate
             sta $d000+(i*2)
             rol $d010
+
+            lda p_y_lo+i
+            asl
             lda p_y_hi+i
+            rol
             sta $d001+(i*2)
         }
         rts
@@ -216,15 +276,27 @@ rot:
 !:
         rts
 
-peeps:
+take_a_shot:
+        lda #2
+        sta state
+        ldx cursor_dir
+        lda cos,x
+        sta acc_y
+        lda sin,x
+        sta acc_x
+        rts
+
+state:  .byte 1
 
 p_dir:  .byte 1,1,0,1
-p_x_lo: .fill 4, 0
-p_x_hi: .byte $2e, $75, $20, $50
-p_x_min:.byte $29, $29, $d
-p_x_max:.byte $41, $7d, $21
-p_y_lo: .fill 4, 0
-p_y_hi: .byte $b5, $35, $75, $75
+p_x_lo: .fill 5, 0
+p_x_hi: .byte $2e, $75, $20, $50, $0
+p_y_lo: .byte $00, $00, $00, $00, $0
+p_y_hi: .byte $62, $22, $42, $42, $0
+
+p_x_min:.byte $2c, $29, $d
+p_x_max:.byte $48, $7d, $21
+
 p_sp:   .byte 25,30,20
 
 grav:   .byte $1
@@ -234,10 +306,18 @@ vel_y:  .byte $0
 acc_x:  .byte $00
 acc_y:  .byte $00
 
+cursor_dir:         .byte $0
+
 wav_lo: .byte 0
 wav_hi: .byte 0
 
 sprite_0:
+.byte %11000000,%00000000,%00000000
+.byte %10000000,%00000000,%00000000
+.byte %10000000,%00000000,%00000000
+.byte %10000000,%00000000,%00000000
+.byte %10000000,%00000000,%00000000
+.byte %11000000,%00000000,%00000000
 .byte %00000000,%00000000,%00000000
 .byte %00000000,%00000000,%00000000
 .byte %00000000,%00000000,%00000000
@@ -253,12 +333,9 @@ sprite_0:
 .byte %00000000,%00000000,%00000000
 .byte %00000000,%00000000,%00000000
 .byte %00000000,%00000000,%00000000
-.byte %00000000,%00110000,%00000000
-.byte %00000000,%00100000,%00000000
-.byte %00000000,%00100000,%00000000
-.byte %00000000,%00100000,%00000000
-.byte %00000000,%00100000,%00000000
-.byte %00000000,%00110000,%00000000
+
+sin:    .fill 256, sin(toRadians(360/256*i))*15
+cos:    .fill 256, cos(toRadians(360/256*i))*15
 
 #import "./charset.asm"
 #import "./map.asm"
