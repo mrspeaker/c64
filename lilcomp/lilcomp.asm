@@ -4,6 +4,7 @@
         .label ADDR_CHAR_MAP_COLOUR_DATA  = $1be8 // label = 'map_colour_data'     (size = $03e8).
         .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
 
+        .const PHYS_REPS = 2
         .const NUM_PEEPS = 3
 
         .const b_x_lo = p_x_lo+3
@@ -29,7 +30,24 @@ entry:
 main:
         jsr get_input
         jsr update_peeps
+
+        lda state
+        cmp #2
+        bne !done2+
+
+        lda power
+        beq !+
+        jsr take_a_shot
+        dec power
+!:
+        clc
+        dec state_t
+        bne !done2+
+        lda #1
+        sta state
+!done2:
         jsr update_phys
+        jsr collisions
         jsr update_cursor
         jsr position_sprites
         jsr rotate_water
@@ -136,7 +154,12 @@ fire:   lsr
         lda state
         cmp #1
         bne !done+
-        jsr take_a_shot
+        lda #2
+        sta state
+        lda #$20
+        sta state_t
+        lda #2
+        sta power
 !done:  rts
 
 update_peeps:
@@ -183,6 +206,8 @@ xx:
         lda #0
         sta acc_x
 
+        ldx PHYS_REPS
+!:
         clc
         lda vel_x
         bpl !pos+
@@ -192,6 +217,8 @@ xx:
         bcc !nover+
         inc p_x_hi+3
 !nover:
+        dex
+        bpl !-
 
 yy:
         lda vel_y
@@ -200,6 +227,9 @@ yy:
         sta vel_y
         lda #0
         sta acc_y
+
+        ldx PHYS_REPS
+!:
 
         clc
         lda vel_y
@@ -210,6 +240,8 @@ yy:
         bcc !nover+
         inc p_y_hi+3
 !nover:
+        dex
+        bpl !-
 
 !done:
         rts
@@ -277,20 +309,70 @@ rot:
         rts
 
 take_a_shot:
-        lda #2
-        sta state
         ldx cursor_dir
         lda cos,x
-        sta acc_y
-        lda sin,x
         sta acc_x
+        lda sin,x
+        sta acc_y
+
+        rts
+
+collisions:
+        clc
+        ldy #0
+        lda b_x_lo
+        asl
+        lda b_x_hi
+        rol
+        bcc !+
+        cmp #80 // right edge of screen (why 80?)
+        bcc !e+
+        rts
+!e:
+        cmp #24 // left hidden area
+        bcc !+
+        ldy #1 // MSB is set
+!:
+        sec
+        sbc #24 // left hidden area
+        lsr
+        lsr
+        lsr
+        cpy #1 // MSB was set?
+        bne !+
+        adc #31 // MSB was set: add more tiles
+!:
+        tax
+
+        clc
+        lda b_y_lo
+        asl
+        lda b_y_hi
+        rol
+        sec
+        sbc #45
+        lsr
+        lsr
+        lsr
+        tay
+
+        lda SCREEN_ROW_LSB,y
+        sta $10
+        lda SCREEN_ROW_MSB,y
+        sta $11
+        txa
+        tay
+        lda #$5a
+        sta ($10),y
+
         rts
 
 state:  .byte 1
+state_t:.byte 0
 
 p_dir:  .byte 1,1,0,1
-p_x_lo: .fill 5, 0
-p_x_hi: .byte $2e, $75, $20, $50, $0
+p_x_lo: .byte 0,0,0,%10000000,0
+p_x_hi: .byte $2e, $75, $20, $10, $0
 p_y_lo: .byte $00, $00, $00, $00, $0
 p_y_hi: .byte $62, $22, $42, $42, $0
 
@@ -305,6 +387,7 @@ vel_y:  .byte $0
 
 acc_x:  .byte $00
 acc_y:  .byte $00
+power:  .byte $00
 
 cursor_dir:         .byte $0
 
@@ -334,8 +417,13 @@ sprite_0:
 .byte %00000000,%00000000,%00000000
 .byte %00000000,%00000000,%00000000
 
-sin:    .fill 256, sin(toRadians(360/256*i))*15
-cos:    .fill 256, cos(toRadians(360/256*i))*15
+sin:    .fill 256, sin(toRadians(360/256*i))*20
+cos:    .fill 256, cos(toRadians(360/256*i))*20
+
+SCREEN_ROW_LSB:
+        .fill 25, <[$0400 + i * 40]
+SCREEN_ROW_MSB:
+        .fill 25, >[$0400 + i * 40]
 
 #import "./charset.asm"
 #import "./map.asm"
