@@ -4,7 +4,7 @@
         .label ADDR_CHARSET_ATTRIB_DATA   = $2700 // label = 'charset_attrib_data' (size = $0100).
         .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
 
-        .const PHYS_REPS = 2
+        .const PHYS_REPS = 3
         .const NUM_PEEPS = 3
 
         .const b_x_lo = p_x_lo+3
@@ -208,11 +208,18 @@ xx:
         lda vel_x
         clc
         adc acc_x
-        sta vel_x
+
+!clamp: bvc !nover+
+        bmi !cmax+
+!cmin:  lda #$80
+        jmp !nover+
+!cmax:  lda #$7f
+!nover: sta vel_x
+
         lda #0
         sta acc_x
 
-        ldx PHYS_REPS
+        ldx #PHYS_REPS
 !:
         clc
         lda vel_x
@@ -226,15 +233,20 @@ xx:
         dex
         bpl !-
 
-yy:
-        lda vel_y
+yy:     lda vel_y
         clc
         adc acc_y
-        sta vel_y
-        lda #0
+!clamp: bvc !nover+
+        bmi !cmax+
+!cmin:  lda #$80
+        jmp !nover+
+!cmax:  lda #$7f
+!nover: sta vel_y
+
+        lda #2
         sta acc_y
 
-        ldx PHYS_REPS
+        ldx #PHYS_REPS
 !:
 
         clc
@@ -425,6 +437,7 @@ refl_y:
         sta vel_y
 
         jmp !done+
+
 safe:
         // store safe location
         lda b_x_lo
