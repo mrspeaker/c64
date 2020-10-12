@@ -350,6 +350,7 @@ collisions:
         adc #31 // MSB was set: add more tiles
 !:
         tax
+        sta $ee
 
         // Y
         clc
@@ -363,6 +364,7 @@ collisions:
         lsr
         lsr
         tay
+        sta $ef
 
         lda SCREEN_ROW_LSB,y
         sta $10
@@ -376,9 +378,9 @@ collisions:
         tax
         lda charset_attrib_data,x
         and #tile_SOLID
-        beq clr
-        //dec $d020
-        // COLLIDE
+        beq safe
+
+collide:
         lda $ea
         sta b_x_lo
         lda $eb
@@ -387,20 +389,44 @@ collisions:
         sta b_y_lo
         lda $ed
         sta b_y_hi
-        lda #0
+
+reflect:
+        // $ee - safe_x
+        lda $ee
+        sec
+        sbc safe_x
+
+        // == is hit from top/bottom
+        beq refl_y
+
+        // >0 is hit from left
+        // <0 is hit from right
+        clc
+        lda vel_x
+        eor #$ff
+        adc #1
         sta vel_x
+
+refl_y:
+        // $ef - safe_y
+        lda $ef
+        sec
+        sbc safe_y
+
+        // == is hit from left/right
+        beq !done+
+        // >0 is hit from bottom
+        // <0 is hit from top
+
+        clc
         lda vel_y
         eor #$ff
         adc #1
-        // cmp #80
-        // ror
         sta vel_y
 
         jmp !done+
-clr:
-        // TODO: store last "safe" cell location
-        // todo: or should be "position" not "cell".
-         // store last x/y
+safe:
+        // store safe location
         lda b_x_lo
         sta $ea
         lda b_x_hi
@@ -409,6 +435,10 @@ clr:
         sta $ec
         lda b_y_hi
         sta $ed
+        lda $ee
+        sta safe_x
+        lda $ef
+        sta safe_y
 
 !done:
 
@@ -440,6 +470,9 @@ cursor_dir:         .byte $0
 
 wav_lo: .byte 0
 wav_hi: .byte 0
+
+safe_x: .byte 0
+safe_y: .byte 0
 
 sprite_0:
 .byte %11000000,%00000000,%00000000
