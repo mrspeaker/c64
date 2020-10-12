@@ -1,7 +1,7 @@
         BasicUpstart2(entry)
 
         .label ADDR_CHAR_MAP_DATA         = $1800 // label = 'map_data'            (size = $03e8).
-        .label ADDR_CHAR_MAP_COLOUR_DATA  = $1be8 // label = 'map_colour_data'     (size = $03e8).
+        .label ADDR_CHARSET_ATTRIB_DATA   = $2700 // label = 'charset_attrib_data' (size = $0100).
         .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
 
         .const PHYS_REPS = 2
@@ -129,9 +129,11 @@ draw_screen:
         ldx #0
 !:
         .for (var i=0; i<4;i++) {
-            lda map_data+(i * $FF), x
+            lda map_data+(i * $FF),x
             sta $400+(i*$FF),x
-            lda map_colour_data+(i * $FF),x
+            tay
+            lda charset_attrib_data,y
+            and #%00001111 // AND out colour
             sta $D800+(i * $FF),x
         }
         inx
@@ -368,14 +370,19 @@ collisions:
         //lda #$5a
         //sta ($10),y
         lda ($10),y
-        cmp #$51
-        bne clr
-        clc
-        lda vel_y
-        eor $ff
-        //adc #1
-        sta vel_y
-        dec b_y_hi
+        tax
+        lda charset_attrib_data,x
+        and #%00010000
+        beq clr
+        // clc
+        // lda vel_y
+        // eor $ff
+        // //adc #1
+        // sta vel_y
+        // dec b_y_hi
+        dec $d020
+        // TODO: if safe, store last "safe" cell.
+
         jmp !done+
 clr:
         // save safe x/y
