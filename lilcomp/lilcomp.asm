@@ -346,6 +346,7 @@ collisions:
 !:
         tax
 
+        // Y
         clc
         lda b_y_lo
         asl
@@ -364,8 +365,21 @@ collisions:
         sta $11
         txa
         tay
-        lda #$5a
-        sta ($10),y
+        //lda #$5a
+        //sta ($10),y
+        lda ($10),y
+        cmp #$51
+        bne clr
+        clc
+        lda vel_y
+        eor $ff
+        //adc #1
+        sta vel_y
+        dec b_y_hi
+        jmp !done+
+clr:
+        // save safe x/y
+!done:
 
         rts
 
