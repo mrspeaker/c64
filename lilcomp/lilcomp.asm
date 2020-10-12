@@ -16,6 +16,8 @@
         .const cursor_y_lo = p_y_lo+4
         .const cursor_y_hi = p_y_hi+4
 
+        .const tile_SOLID = %00010000
+
 entry:
         lda #$0
         sta $d020
@@ -322,6 +324,7 @@ take_a_shot:
         rts
 
 collisions:
+        // Convert pos to X/Y cell locations
         clc
         ldy #0
         lda b_x_lo
@@ -367,25 +370,46 @@ collisions:
         sta $11
         txa
         tay
-        //lda #$5a
-        //sta ($10),y
+
+        // Check tile attrib
         lda ($10),y
         tax
         lda charset_attrib_data,x
-        and #%00010000
+        and #tile_SOLID
         beq clr
-        // clc
-        // lda vel_y
-        // eor $ff
-        // //adc #1
-        // sta vel_y
-        // dec b_y_hi
-        dec $d020
-        // TODO: if safe, store last "safe" cell.
+        //dec $d020
+        // COLLIDE
+        lda $ea
+        sta b_x_lo
+        lda $eb
+        sta b_x_hi
+        lda $ec
+        sta b_y_lo
+        lda $ed
+        sta b_y_hi
+        lda #0
+        sta vel_x
+        lda vel_y
+        eor #$ff
+        adc #1
+        // cmp #80
+        // ror
+        sta vel_y
 
         jmp !done+
 clr:
-        // save safe x/y
+        // TODO: store last "safe" cell location
+        // todo: or should be "position" not "cell".
+         // store last x/y
+        lda b_x_lo
+        sta $ea
+        lda b_x_hi
+        sta $eb
+        lda b_y_lo
+        sta $ec
+        lda b_y_hi
+        sta $ed
+
 !done:
 
         rts
