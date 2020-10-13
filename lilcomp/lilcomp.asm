@@ -34,62 +34,70 @@
 
         .const tile_SOLID = %00010000
 
-entry:
-        lda #$0
-        sta $d020
-        sta $d021
+entry:  {
+    lda #$0
+    sta $d020
+    sta $d021
 
-        jsr copy_chars
-        jsr draw_screen
-        jsr init_sprites
-        jsr init_irq
-        jmp *
+    jsr copy_chars
+    jsr draw_screen
+    jsr init_sprites
+    jsr init_irq
+    jmp *
+}
 
         //======================
 main: {
         //======================
-        jsr get_input
-        jsr update_peeps
+    jsr get_input
+    jsr handle_state
+    jsr update_peeps
+    jsr position_sprites
+    jsr rotate_water
+    rts
+}
 
-        lda state
+        //======================
+handle_state:{
+        //======================
+
+    lda state
 
 st_walking:
         cmp #state_WALKING
         bne st_wait_fire
         jsr walking
-        jmp no_phys
+        jmp !done+
 
 st_wait_fire:
         cmp #state_WAIT_AIM_FIRE
         bne st_aiming
         lda input_state
         and #%00010000
-        beq post_state
+        beq physics
         lda #state_AIMING
         sta state
-        jmp post_state
+        jmp physics
 
 st_aiming:
         cmp #state_AIMING
         bne st_rolling
         jsr update_cursor
         jsr take_a_shot
-        jmp post_state
+        jmp physics
 
 st_rolling:
         cmp #state_ROLLING
-        bne post_state
+        bne physics
         jsr check_sleeping
 
-post_state:
+physics:
         jsr update_physics
         jsr friction
         jsr collisions
 
-no_phys:
-        jsr position_sprites
-        jsr rotate_water
-        rts
+!done:
+
 }
 
         //======================
@@ -132,6 +140,13 @@ irq:
         pla
         rti
 
+        //======================
+get_input: {
+        //======================
+        lda $dc00
+        sta input_state
+        rts
+}
 
         //======================
 init_sprites:{
@@ -188,12 +203,13 @@ position_sprites:{
         rts
 }
 
-
 copy_chars:
+        // note: was copy, now just point at $2800
         lda $d018
         and #%11110001
         ora #%00001010 // $2800
         sta $d018
+        rts
 
 draw_screen:
         ldx #0
@@ -210,14 +226,10 @@ draw_screen:
         bne !-
         rts
 
-get_input: {
-        lda $dc00
-        sta input_state
-        rts
-}
-
+    //======================
 walking: {
-        lda input_state
+    //======================
+    lda input_state
 wup:    lsr
         bcs wdown
         dec b_y_hi
@@ -235,7 +247,7 @@ wfire:  lsr
         lda #state_WAIT_AIM_FIRE
         sta state
 still_walking:
-        rts
+    rts
 }
 
     //======================
