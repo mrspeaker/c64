@@ -1,3 +1,4 @@
 *.vs
 *.sym
 *.dbg
+*/asminfo.txt
