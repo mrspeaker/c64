@@ -4,8 +4,16 @@
         .label ADDR_CHARSET_ATTRIB_DATA   = $2700 // label = 'charset_attrib_data' (size = $0100).
         .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
 
-        .const PHYS_REPS = 3
+        .const PHYS_REPS = 2
         .const NUM_PEEPS = 3
+
+        // TODO: these don't need to be zero page
+        .const SAFE_X_LO = $ea
+        .const SAFE_X_HI = $eb
+        .const SAFE_Y_LO = $ec
+        .const SAFE_Y_HI = $ed
+        .const CELL_CUR_X = $ee
+        .const CELL_CUR_Y = $ef
 
         .const b_x_lo = p_x_lo+3
         .const b_x_hi = p_x_hi+3
@@ -49,6 +57,7 @@ main:
         sta state
 !done2:
         jsr update_phys
+        jsr friction
         jsr collisions
         jsr update_cursor
         jsr position_sprites
@@ -107,7 +116,7 @@ init_sprites:
         sta $d02a
 
         ldx #64*2
-!:      lda sprite_0,x
+!:      lda spr_data,x
         sta $340,x
         dex
         bpl !-
@@ -243,12 +252,13 @@ yy:     lda vel_y
 !cmax:  lda #$7f
 !nover: sta vel_y
 
-        lda #2
+        lda grav
         sta acc_y
 
         ldx #PHYS_REPS
 !:
 
+        // update positions
         clc
         lda vel_y
         bpl !pos+
@@ -260,8 +270,43 @@ yy:     lda vel_y
 !nover:
         dex
         bpl !-
+        rts
 
-!done:
+friction:
+        inc t
+        lda t
+        cmp #8
+        bne fric_done
+        lda #0
+        sta t
+
+
+fric_y:
+        lda vel_y
+        beq fric_x
+        bpl !+
+        clc
+        adc #10
+        jmp fric_y_done
+!:
+        sec
+        sbc #10
+fric_y_done:
+        sta vel_y
+
+fric_x:
+//dec_x:
+        lda vel_x
+        beq fric_done
+        bpl !+
+        clc
+        adc #1
+        jmp fric_x_done
+!:      sec
+        sbc #1
+fric_x_done:
+        sta vel_x
+fric_done:
         rts
 
 update_cursor:
@@ -329,8 +374,13 @@ rot:
 take_a_shot:
         ldx cursor_dir
         lda cos,x
+        clc
+        adc acc_x
         sta acc_x
+
         lda sin,x
+        clc
+        adc acc_y
         sta acc_y
 
         rts
@@ -362,7 +412,7 @@ collisions:
         adc #31 // MSB was set: add more tiles
 !:
         tax
-        sta $ee
+        sta CELL_CUR_X
 
         // Y
         clc
@@ -376,7 +426,7 @@ collisions:
         lsr
         lsr
         tay
-        sta $ef
+        sta CELL_CUR_Y
 
         lda SCREEN_ROW_LSB,y
         sta $10
@@ -393,20 +443,23 @@ collisions:
         beq safe
 
 collide:
-        lda $ea
+        lda SAFE_X_LO
         sta b_x_lo
-        lda $eb
+        lda SAFE_X_HI
         sta b_x_hi
-        lda $ec
+        lda SAFE_Y_LO
         sta b_y_lo
-        lda $ed
+        lda SAFE_Y_HI
         sta b_y_hi
+/*
+   todo: check collision y, x...
+ */
 
 reflect:
         // $ee - safe_x
-        lda $ee
+        lda CELL_CUR_X
         sec
-        sbc safe_x
+        sbc last_safe_x_cell
 
         // == is hit from top/bottom
         beq refl_y
@@ -421,9 +474,9 @@ reflect:
 
 refl_y:
         // $ef - safe_y
-        lda $ef
+        lda CELL_CUR_Y
         sec
-        sbc safe_y
+        sbc last_safe_y_cell
 
         // == is hit from left/right
         beq !done+
@@ -441,17 +494,18 @@ refl_y:
 safe:
         // store safe location
         lda b_x_lo
-        sta $ea
+        sta SAFE_X_LO
         lda b_x_hi
-        sta $eb
+        sta SAFE_X_HI
         lda b_y_lo
-        sta $ec
+        sta SAFE_Y_LO
         lda b_y_hi
-        sta $ed
-        lda $ee
-        sta safe_x
-        lda $ef
-        sta safe_y
+        sta SAFE_Y_HI
+
+        lda CELL_CUR_X
+        sta last_safe_x_cell
+        lda CELL_CUR_Y
+        sta last_safe_y_cell
 
 !done:
 
@@ -471,7 +525,7 @@ p_x_max:.byte $48, $7d, $21
 
 p_sp:   .byte 25,30,20
 
-grav:   .byte $1
+grav:   .byte $2
 vel_x:  .byte $0
 vel_y:  .byte $0
 
@@ -484,54 +538,25 @@ cursor_dir:         .byte $0
 wav_lo: .byte 0
 wav_hi: .byte 0
 
-safe_x: .byte 0
-safe_y: .byte 0
+last_safe_x_cell: .byte 0
+last_safe_y_cell: .byte 0
 
-sprite_0:
-.byte %11000000,%00000000,%00000000
-.byte %10000000,%00000000,%00000000
-.byte %10000000,%00000000,%00000000
-.byte %10000000,%00000000,%00000000
-.byte %10000000,%00000000,%00000000
-.byte %11000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
+t:      .byte 0
+
+spr_data:
+        .byte %11000000,%00000000,%00000000
+        .byte %10000000,%00000000,%00000000
+        .byte %10000000,%00000000,%00000000
+        .byte %10000000,%00000000,%00000000
+        .byte %10000000,%00000000,%00000000
+        .byte %11000000,%00000000,%00000000
+        .fill 15*3, 0
         .byte 0
 
-.byte %00110000,%00000000,%00000000
-.byte %11001100,%00000000,%00000000
-.byte %00110000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-.byte %00000000,%00000000,%00000000
-        .byte %00000000,%00000000,%0000000
+        .byte %00110000,%00000000,%00000000
+        .byte %11001100,%00000000,%00000000
+        .byte %00110000,%00000000,%00000000
+        .fill 18*3, 0
         .byte 0
 
 sin:    .fill 256, sin(toRadians(360/256*i))*20
