@@ -28,8 +28,9 @@
 
         .const state_INIT = 1
         .const state_WALKING = 2
-        .const state_AIMING = 3
-        .const state_ROLLING = 4
+        .const state_WAIT_AIM_FIRE = 3
+        .const state_AIMING = 4
+        .const state_ROLLING = 5
 
         .const tile_SOLID = %00010000
 
@@ -51,19 +52,27 @@ main:
         lda state
         cmp #state_WALKING
         bne not_walk
-st_walking:
-        jmp post_state
+        jsr walking
+        jmp no_phys
 not_walk:
+        cmp #state_WAIT_AIM_FIRE
+        bne not_wait_fire
+        lda input_state
+        and #%00010000
+        beq not_wait_fire
+        lda #state_AIMING
+        sta state
+        jmp post_state
+not_wait_fire:
         cmp #state_AIMING
         bne not_aim
-st_aiming:
         jsr update_cursor
         jsr take_a_shot
         jmp post_state
 not_aim:
         cmp #state_ROLLING
         bne post_state
-st_rolling:
+        // is stopped rolling?
         lda vel_x
         bne still_roll
         lda vel_y
@@ -73,7 +82,7 @@ st_rolling:
         adc #1
 !abs:   cmp #3
         bpl still_roll
-        lda #state_AIMING
+        lda #state_WALKING
         sta state
 still_roll:
 
@@ -81,6 +90,7 @@ post_state:
         jsr update_phys
         jsr friction
         jsr collisions
+no_phys:
         jsr position_sprites
         jsr rotate_water
         rts
@@ -176,12 +186,32 @@ get_input:
         sta input_state
         rts
 
+walking:
+        lda input_state
+wup:    lsr
+        bcs wdown
+        dec b_y_hi
+wdown:  lsr
+        bcs wleft
+        inc b_y_hi
+wleft:  lsr
+        bcs wright
+        dec b_x_hi
+wright: lsr
+        bcs wfire
+        inc b_x_hi
+wfire:  lsr
+        bcs still_walking
+        lda #state_WAIT_AIM_FIRE
+        sta state
+still_walking:
+        rts
+
 take_a_shot:
         // Check for filre
         lda input_state
         and #%00010000
         bne shot_done
-        dec $d020
 
         lda #state_ROLLING
         sta state
@@ -189,7 +219,7 @@ take_a_shot:
         ldx cursor_dir
         lda acc_x
         clc
-        adc cos,x
+        adc cos,x //todo: make this "power"
         adc cos,x
         adc cos,x
         adc cos,x
@@ -256,8 +286,7 @@ xx:
         bmi !cmax+
 !cmin:  lda #$80
         jmp !nover+
-!cmax:  dec $d020
-        lda #$7f
+!cmax:  lda #$7f
 
 !nover: sta vel_x
 
