@@ -4,7 +4,9 @@
         .label ADDR_CHARSET_ATTRIB_DATA   = $2700 // label = 'charset_attrib_data' (size = $0100).
         .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
 
-        .const PHYS_REPS = 2
+        .const MAP_FRAME=1*$3e8
+
+        .const PHYS_REPS = 5
         .const NUM_PEEPS = 3
 
         // TODO: these don't need to be zero page
@@ -24,6 +26,11 @@
         .const cursor_y_lo = p_y_lo+4
         .const cursor_y_hi = p_y_hi+4
 
+        .const state_INIT = 1
+        .const state_WALKING = 2
+        .const state_AIMING = 3
+        .const state_ROLLING = 4
+
         .const tile_SOLID = %00010000
 
 entry:
@@ -42,24 +49,38 @@ main:
         jsr update_peeps
 
         lda state
-        cmp #2
-        bne !done2+
-
-        lda power
-        beq !+
+        cmp #state_WALKING
+        bne not_walk
+st_walking:
+        jmp post_state
+not_walk:
+        cmp #state_AIMING
+        bne not_aim
+st_aiming:
+        jsr update_cursor
         jsr take_a_shot
-        dec power
-!:
+        jmp post_state
+not_aim:
+        cmp #state_ROLLING
+        bne post_state
+st_rolling:
+        lda vel_x
+        bne still_roll
+        lda vel_y
+        bpl !abs+
+        eor #$ff
         clc
-        dec state_t
-        bne !done2+
-        lda #1
+        adc #1
+!abs:   cmp #3
+        bpl still_roll
+        lda #state_AIMING
         sta state
-!done2:
+still_roll:
+
+post_state:
         jsr update_phys
         jsr friction
         jsr collisions
-        jsr update_cursor
         jsr position_sprites
         jsr rotate_water
         rts
@@ -129,7 +150,6 @@ init_sprites:
         sta $7fc
         rts
 
-
 copy_chars:
         lda $d018
         and #%11110001
@@ -140,7 +160,7 @@ draw_screen:
         ldx #0
 !:
         .for (var i=0; i<4;i++) {
-            lda map_data+(i * $FF),x
+            lda map_data+MAP_FRAME+(i * $FF),x
             sta $400+(i*$FF),x
             tay
             lda charset_attrib_data,y
@@ -151,31 +171,45 @@ draw_screen:
         bne !-
         rts
 
-
 get_input:
         lda $dc00
-up:     lsr
-        bcs down
-down:   lsr
-        bcs left
-left:   lsr
-        bcs right
-        dec cursor_dir
-right:  lsr
-        bcs fire
-        inc cursor_dir
-fire:   lsr
-        bcs !done+
-        lda state
-        cmp #1
-        bne !done+
-        lda #2
+        sta input_state
+        rts
+
+take_a_shot:
+        // Check for filre
+        lda input_state
+        and #%00010000
+        bne shot_done
+        dec $d020
+
+        lda #state_ROLLING
         sta state
-        lda #$20
-        sta state_t
-        lda #2
-        sta power
-!done:  rts
+
+        ldx cursor_dir
+        lda acc_x
+        clc
+        adc cos,x
+        adc cos,x
+        adc cos,x
+        adc cos,x
+        adc cos,x
+        adc cos,x
+
+        sta acc_x
+
+        lda acc_y
+        clc
+        adc sin,x
+        adc sin,x
+        adc sin,x
+        adc sin,x
+        adc sin,x
+        adc sin,x
+        sta acc_y
+
+shot_done:
+        rts
 
 update_peeps:
         ldx #NUM_PEEPS-1
@@ -222,7 +256,9 @@ xx:
         bmi !cmax+
 !cmin:  lda #$80
         jmp !nover+
-!cmax:  lda #$7f
+!cmax:  dec $d020
+        lda #$7f
+
 !nover: sta vel_x
 
         lda #0
@@ -273,29 +309,26 @@ yy:     lda vel_y
         rts
 
 friction:
+
+fric_y:
+        lda bounced_y
+        beq fric_y_done
+        dec bounced_y
+
+        lda vel_y
+        cmp #$80 // divide by 2. TODO: better.
+        ror
+        sta vel_y
+
+fric_y_done:
         inc t
         lda t
-        cmp #8
+        cmp #6
         bne fric_done
         lda #0
         sta t
 
-
-fric_y:
-        lda vel_y
-        beq fric_x
-        bpl !+
-        clc
-        adc #10
-        jmp fric_y_done
-!:
-        sec
-        sbc #10
-fric_y_done:
-        sta vel_y
-
 fric_x:
-//dec_x:
         lda vel_x
         beq fric_done
         bpl !+
@@ -309,31 +342,44 @@ fric_x_done:
 fric_done:
         rts
 
-update_cursor:
-        lda b_x_lo
-        sta cursor_x_lo
-        lda b_x_hi
-        sta cursor_x_hi
-        and #%01111111
-        lda b_y_lo
-        sta cursor_y_lo
-        lda b_y_hi
-        and #%01111111
+update_cursor: {
+    lda input_state
+    tax
+    and #%00000100
+    bne no_left
+    dec cursor_dir
+no_left:
+    txa
+    and #%00001000
+    bne no_right
+    inc cursor_dir
+no_right:
 
-        sta cursor_y_hi
+cursor_pos:
+    lda b_x_lo
+    sta cursor_x_lo
+    lda b_x_hi
+    sta cursor_x_hi
 
-        ldx cursor_dir
-        lda cursor_x_hi
-        clc
-        adc cos,x
-        sta cursor_x_hi
+    lda b_y_lo
+    sta cursor_y_lo
+    lda b_y_hi
+    and #%01111111
+    sta cursor_y_hi
 
-        lda cursor_y_hi
-        clc
-        adc sin,x
-        sta cursor_y_hi
+    ldx cursor_dir
+    lda cursor_x_hi
+    clc
+    adc cos,x
+    sta cursor_x_hi
 
-        rts
+    lda cursor_y_hi
+    clc
+    adc sin,x
+    sta cursor_y_hi
+
+    rts
+}
 
 position_sprites:
         .for(var i=NUM_PEEPS+1;i>=0;i--) {
@@ -369,20 +415,6 @@ rot:
         bpl rot
         sty ADDR_CHARSET_DATA+(87*8)
 !:
-        rts
-
-take_a_shot:
-        ldx cursor_dir
-        lda cos,x
-        clc
-        adc acc_x
-        sta acc_x
-
-        lda sin,x
-        clc
-        adc acc_y
-        sta acc_y
-
         rts
 
 collisions:
@@ -482,12 +514,14 @@ refl_y:
         beq !done+
         // >0 is hit from bottom
         // <0 is hit from top
-
         clc
         lda vel_y
         eor #$ff
         adc #1
         sta vel_y
+
+        lda #1
+        sta bounced_y
 
         jmp !done+
 
@@ -511,8 +545,9 @@ safe:
 
         rts
 
-state:  .byte 1
+state:  .byte state_AIMING
 state_t:.byte 0
+input_state:.byte 0
 
 p_dir:  .byte 1,1,0,1
 p_x_lo: .byte 0,0,0,%10000000,0
@@ -532,6 +567,8 @@ vel_y:  .byte $0
 acc_x:  .byte $00
 acc_y:  .byte $00
 power:  .byte $00
+
+bounced_y:.byte $0
 
 cursor_dir:         .byte $0
 
@@ -559,8 +596,8 @@ spr_data:
         .fill 18*3, 0
         .byte 0
 
-sin:    .fill 256, sin(toRadians(360/256*i))*20
-cos:    .fill 256, cos(toRadians(360/256*i))*20
+sin:    .fill 256, sin(toRadians(360/256*i))*10
+cos:    .fill 256, cos(toRadians(360/256*i))*10
 
 SCREEN_ROW_LSB:
         .fill 25, <[$0400 + i * 40]
