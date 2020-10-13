@@ -1,5 +1,7 @@
         BasicUpstart2(entry)
 
+        //.watch $ef
+
         .label ADDR_CHAR_MAP_DATA         = $1800 // label = 'map_data'            (size = $03e8).
         .label ADDR_CHARSET_ATTRIB_DATA   = $2700 // label = 'charset_attrib_data' (size = $0100).
         .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
@@ -35,6 +37,7 @@
         .const tile_SOLID = %00010000
 
 entry:
+//        .break
         lda #$0
         sta $d020
         sta $d021
@@ -73,8 +76,6 @@ not_aim:
         cmp #state_ROLLING
         bne post_state
         // is stopped rolling?
-        lda vel_x
-        bne still_roll
         lda vel_y
         bpl !abs+
         eor #$ff
@@ -82,6 +83,19 @@ not_aim:
         adc #1
 !abs:   cmp #3
         bpl still_roll
+
+        lda vel_x
+        bpl !abs+
+        eor #$ff
+        clc
+        adc #1
+!abs:   cmp #$a
+        bpl still_roll
+
+        lda #0
+        sta vel_x
+        sta vel_y
+
         lda #state_WALKING
         sta state
 still_roll:
@@ -208,35 +222,75 @@ still_walking:
         rts
 
 take_a_shot:
-        // Check for filre
+        // Check for fire
         lda input_state
         and #%00010000
-        bne shot_done
+        bne did_we_shoot
 
-        lda #state_ROLLING
-        sta state
+        // add power.
+        inc st_shoot_power
+        dec $d020
+        jmp shot_done
+did_we_shoot:
+        ldy st_shoot_power
+        beq shot_done
+yep_we_did:
+        // scale down power
+        lda st_shoot_power
+        //asl
+        //asl
+        sta st_shoot_power
+        tay
 
         ldx cursor_dir
-        lda acc_x
-        clc
-        adc cos,x //todo: make this "power"
-        adc cos,x
-        adc cos,x
-        adc cos,x
-        adc cos,x
-        adc cos,x
+       // .break
+apply_acc:
+        lda cos,x
+        bpl !pos+
+        dec acc_x
+!pos:   adc acc_x_lo
+        sta acc_x_lo
+        bcc !nover+
+        inc acc_x
+!nover:
 
-        sta acc_x
+        lda sin,x
+        bpl !pos+
+        dec acc_y
+!pos:   adc acc_y_lo
+        sta acc_y_lo
+        bcc !nover+
+        inc acc_y
+!nover:
 
-        lda acc_y
-        clc
-        adc sin,x
-        adc sin,x
-        adc sin,x
-        adc sin,x
-        adc sin,x
-        adc sin,x
-        sta acc_y
+        dey
+        bpl apply_acc
+
+
+//         // aim
+//         ldx cursor_dir
+//         lda #0 // fire acceleration x
+//         clc
+// !:
+//         adc cos,x
+//         dey
+//         bpl !-
+//         sta acc_x
+
+//         ldy st_shoot_power
+//         lda #0 // fire acceleratoin y
+//         clc
+// !:
+//         adc sin,x
+//         dey
+//         bpl !-
+//         sta acc_y
+
+go_rolling:
+        lda #state_ROLLING
+        sta state
+        lda #0
+        sta st_shoot_power
 
 shot_done:
         rts
@@ -350,24 +404,31 @@ fric_y:
         sta vel_y
 
 fric_y_done:
-        inc t
-        lda t
-        cmp #6
-        bne fric_done
-        lda #0
-        sta t
+        // inc t
+        // lda t
+        // cmp #3
+        // bne fric_done
+        // lda #0
+        // sta t
 
 fric_x:
-        lda vel_x
+        lda bounced_x
         beq fric_done
-        bpl !+
-        clc
-        adc #1
-        jmp fric_x_done
-!:      sec
-        sbc #1
-fric_x_done:
+        dec bounced_x
+
+        lda vel_x
+        cmp #$80
+        ror
         sta vel_x
+//         beq fric_done
+//         bpl !+
+//         clc
+//         adc #1
+//         jmp fric_x_done
+// !:      sec
+//         sbc #1
+// fric_x_done:
+
 fric_done:
         rts
 
@@ -397,15 +458,36 @@ cursor_pos:
     sta cursor_y_hi
 
     ldx cursor_dir
-    lda cursor_x_hi
-    clc
-    adc cos,x
-    sta cursor_x_hi
 
-    lda cursor_y_hi
+    ldy #15
+mulx:
     clc
-    adc sin,x
-    sta cursor_y_hi
+    lda cos,x
+    bpl !pos+
+    dec cursor_x_hi
+!pos:
+    adc cursor_x_lo
+    sta cursor_x_lo
+    bcc !nover+
+    inc cursor_x_hi
+!nover:
+    dey
+    bpl mulx
+
+    ldy #15
+muly:
+    clc
+    lda sin,x
+    bpl !pos+
+    dec cursor_y_hi
+!pos:
+    adc cursor_y_lo
+    sta cursor_y_lo
+    bcc !nover+
+    inc cursor_y_hi
+!nover:
+    dey
+    bpl muly
 
     rts
 }
@@ -532,6 +614,10 @@ reflect:
         eor #$ff
         adc #1
         sta vel_x
+        dec $d020
+        lda #1
+        sta bounced_x
+
 
 refl_y:
         // $ef - safe_y
@@ -574,32 +660,34 @@ safe:
 
         rts
 
-state:  .byte state_AIMING
+state:  .byte state_WALKING
 state_t:.byte 0
 input_state:.byte 0
 
-p_dir:  .byte 1,1,0,1
+p_dir:  .byte 1,1,0,0,0
 p_x_lo: .byte 0,0,0,%10000000,0
 p_x_hi: .byte $2e, $75, $20, $10, $0
 p_y_lo: .byte $00, $00, $00, $00, $0
 p_y_hi: .byte $62, $22, $42, $42, $0
 
-p_x_min:.byte $2c, $29, $d
-p_x_max:.byte $48, $7d, $21
-
-p_sp:   .byte 25,30,20
+p_x_min:.byte $2c, $29, $d, 0, 0
+p_x_max:.byte $48, $7d, $21, 0, 0
+p_sp:   .byte 25,30,20, 0, 0
 
 grav:   .byte $2
 vel_x:  .byte $0
 vel_y:  .byte $0
 
+acc_x_lo:           .byte $00
 acc_x:  .byte $00
+acc_y_lo:           .byte $00
 acc_y:  .byte $00
-power:  .byte $00
 
+cursor_dir:.byte $0
+st_shoot_power:.byte $00
+bounced_x:.byte $0
 bounced_y:.byte $0
 
-cursor_dir:         .byte $0
 
 wav_lo: .byte 0
 wav_hi: .byte 0
@@ -625,8 +713,11 @@ spr_data:
         .fill 18*3, 0
         .byte 0
 
-sin:    .fill 256, sin(toRadians(360/256*i))*10
-cos:    .fill 256, cos(toRadians(360/256*i))*10
+lol:    .fill 4,$aa
+sin:    .fill 256, round(sin(toRadians(360/256*i))*128)
+lol2:    .fill 4, $55
+cos:    .fill 256, round(cos(toRadians(360/256*i))*128)
+lol3:   .fill 4,$aa
 
 SCREEN_ROW_LSB:
         .fill 25, <[$0400 + i * 40]
