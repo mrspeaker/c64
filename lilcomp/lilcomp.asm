@@ -7,8 +7,6 @@
         .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
 
         .const MAP_FRAME=1*$3e8
-
-        .const PHYS_REPS = 5
         .const NUM_PEEPS = 3
 
         // TODO: these don't need to be zero page
@@ -37,7 +35,6 @@
         .const tile_SOLID = %00010000
 
 entry:
-//        .break
         lda #$0
         sta $d020
         sta $d021
@@ -48,68 +45,56 @@ entry:
         jsr init_irq
         jmp *
 
-main:
+        //======================
+main: {
+        //======================
         jsr get_input
         jsr update_peeps
 
         lda state
+
+st_walking:
         cmp #state_WALKING
-        bne not_walk
+        bne st_wait_fire
         jsr walking
         jmp no_phys
-not_walk:
+
+st_wait_fire:
         cmp #state_WAIT_AIM_FIRE
-        bne not_wait_fire
+        bne st_aiming
         lda input_state
         and #%00010000
-        beq not_wait_fire
+        beq post_state
         lda #state_AIMING
         sta state
         jmp post_state
-not_wait_fire:
+
+st_aiming:
         cmp #state_AIMING
-        bne not_aim
+        bne st_rolling
         jsr update_cursor
         jsr take_a_shot
         jmp post_state
-not_aim:
+
+st_rolling:
         cmp #state_ROLLING
         bne post_state
-        // is stopped rolling?
-        lda vel_y
-        bpl !abs+
-        eor #$ff
-        clc
-        adc #1
-!abs:   cmp #3
-        bpl still_roll
-
-        lda vel_x
-        bpl !abs+
-        eor #$ff
-        clc
-        adc #1
-!abs:   cmp #$a
-        bpl still_roll
-
-        lda #0
-        sta vel_x
-        sta vel_y
-
-        lda #state_WALKING
-        sta state
-still_roll:
+        jsr check_sleeping
 
 post_state:
-        jsr update_phys
+        jsr update_physics
         jsr friction
         jsr collisions
+
 no_phys:
         jsr position_sprites
         jsr rotate_water
         rts
+}
 
+        //======================
 init_irq:
+        //======================
         sei
         lda #$7f
         sta $dc0d
@@ -132,7 +117,10 @@ init_irq:
         cli
         rts
 
+        //======================
 irq:
+        //======================
+
 //        dec $d020
         dec $d019
         jsr main
@@ -144,7 +132,11 @@ irq:
         pla
         rti
 
-init_sprites:
+
+        //======================
+init_sprites:{
+        //======================
+
         lda #%00011111
         sta $d015
         sta $d01c
@@ -173,6 +165,29 @@ init_sprites:
         lda #$340/64+1
         sta $7fc
         rts
+}
+
+        //======================
+position_sprites:{
+        //======================
+        .for(var i=NUM_PEEPS+1;i>=0;i--) {
+            lda p_x_lo+i // xpos is 16-bit, 9.7 fixed point (9th bit is MSB sprite X)
+            asl     // ... carry has the highest bit of our low byte
+            lda p_x_hi+i
+            rol     // shifts the Carry flag (bit 8) into place, making A the low 8
+                    // bits of the 9-bit pixel coordinate
+            sta $d000+(i*2)
+            rol $d010
+
+            lda p_y_lo+i
+            asl
+            lda p_y_hi+i
+            rol
+            sta $d001+(i*2)
+        }
+        rts
+}
+
 
 copy_chars:
         lda $d018
@@ -195,12 +210,13 @@ draw_screen:
         bne !-
         rts
 
-get_input:
+get_input: {
         lda $dc00
         sta input_state
         rts
+}
 
-walking:
+walking: {
         lda input_state
 wup:    lsr
         bcs wdown
@@ -220,8 +236,12 @@ wfire:  lsr
         sta state
 still_walking:
         rts
+}
 
-take_a_shot:
+    //======================
+take_a_shot:{
+    //======================
+
         // Check for fire
         lda input_state
         and #%00010000
@@ -247,44 +267,24 @@ yep_we_did:
 apply_acc:
         lda cos,x
         bpl !pos+
-        dec acc_x
+        dec acc_x_hi
 !pos:   adc acc_x_lo
         sta acc_x_lo
         bcc !nover+
-        inc acc_x
+        inc acc_x_hi
 !nover:
 
         lda sin,x
         bpl !pos+
-        dec acc_y
+        dec acc_y_hi
 !pos:   adc acc_y_lo
         sta acc_y_lo
         bcc !nover+
-        inc acc_y
+        inc acc_y_hi
 !nover:
 
         dey
         bpl apply_acc
-
-
-//         // aim
-//         ldx cursor_dir
-//         lda #0 // fire acceleration x
-//         clc
-// !:
-//         adc cos,x
-//         dey
-//         bpl !-
-//         sta acc_x
-
-//         ldy st_shoot_power
-//         lda #0 // fire acceleratoin y
-//         clc
-// !:
-//         adc sin,x
-//         dey
-//         bpl !-
-//         sta acc_y
 
 go_rolling:
         lda #state_ROLLING
@@ -294,8 +294,12 @@ go_rolling:
 
 shot_done:
         rts
+}
 
-update_peeps:
+        //======================
+update_peeps:{
+        //======================
+
         ldx #NUM_PEEPS-1
 !:
         // TODO: convert this to signed direction
@@ -328,13 +332,17 @@ sub:
         dex
         bpl !-
         rts
+}
 
-update_phys:
+        //======================
+update_physics:{
+        //======================
 
+        // Add X acc, and clamp velocity
 xx:
         lda vel_x
         clc
-        adc acc_x
+        adc acc_x_hi //todo: should be both bytes
 
 !clamp: bvc !nover+
         bmi !cmax+
@@ -344,11 +352,11 @@ xx:
 
 !nover: sta vel_x
 
-        lda #0
-        sta acc_x
+        lda #0 // reset acc
+        sta acc_x_lo
+        sta acc_x_hi
 
-        ldx #PHYS_REPS
-!:
+        // update X screen pos
         clc
         lda vel_x
         bpl !pos+
@@ -358,12 +366,11 @@ xx:
         bcc !nover+
         inc p_x_hi+3
 !nover:
-        dex
-        bpl !-
 
+        // Add Y acc, and clamp velocity
 yy:     lda vel_y
         clc
-        adc acc_y
+        adc acc_y_hi // todo: should be both bytes
 !clamp: bvc !nover+
         bmi !cmax+
 !cmin:  lda #$80
@@ -371,13 +378,13 @@ yy:     lda vel_y
 !cmax:  lda #$7f
 !nover: sta vel_y
 
+        // Apply gravity, reset acc
         lda grav
-        sta acc_y
+        sta acc_y_hi
+        lda #0
+        sta acc_y_lo
 
-        ldx #PHYS_REPS
-!:
-
-        // update positions
+        // update Y screen pos
         clc
         lda vel_y
         bpl !pos+
@@ -387,11 +394,12 @@ yy:     lda vel_y
         bcc !nover+
         inc p_y_hi+3
 !nover:
-        dex
-        bpl !-
         rts
+}
 
-friction:
+        //======================
+friction: {
+        //======================
 
 fric_y:
         lda bounced_y
@@ -402,15 +410,7 @@ fric_y:
         cmp #$80 // divide by 2. TODO: better.
         ror
         sta vel_y
-
 fric_y_done:
-        // inc t
-        // lda t
-        // cmp #3
-        // bne fric_done
-        // lda #0
-        // sta t
-
 fric_x:
         lda bounced_x
         beq fric_done
@@ -420,97 +420,44 @@ fric_x:
         cmp #$80
         ror
         sta vel_x
-//         beq fric_done
-//         bpl !+
-//         clc
-//         adc #1
-//         jmp fric_x_done
-// !:      sec
-//         sbc #1
-// fric_x_done:
-
 fric_done:
-        rts
-
-update_cursor: {
-    lda input_state
-    tax
-    and #%00000100
-    bne no_left
-    dec cursor_dir
-no_left:
-    txa
-    and #%00001000
-    bne no_right
-    inc cursor_dir
-no_right:
-
-cursor_pos:
-    lda b_x_lo
-    sta cursor_x_lo
-    lda b_x_hi
-    sta cursor_x_hi
-
-    lda b_y_lo
-    sta cursor_y_lo
-    lda b_y_hi
-    and #%01111111
-    sta cursor_y_hi
-
-    ldx cursor_dir
-
-    ldy #15
-mulx:
-    clc
-    lda cos,x
-    bpl !pos+
-    dec cursor_x_hi
-!pos:
-    adc cursor_x_lo
-    sta cursor_x_lo
-    bcc !nover+
-    inc cursor_x_hi
-!nover:
-    dey
-    bpl mulx
-
-    ldy #15
-muly:
-    clc
-    lda sin,x
-    bpl !pos+
-    dec cursor_y_hi
-!pos:
-    adc cursor_y_lo
-    sta cursor_y_lo
-    bcc !nover+
-    inc cursor_y_hi
-!nover:
-    dey
-    bpl muly
-
     rts
 }
 
-position_sprites:
-        .for(var i=NUM_PEEPS+1;i>=0;i--) {
-            lda p_x_lo+i // xpos is 16-bit, 9.7 fixed point (9th bit is MSB sprite X)
-            asl     // ... carry has the highest bit of our low byte
-            lda p_x_hi+i
-            rol     // shifts the Carry flag (bit 8) into place, making A the low 8
-                    // bits of the 9-bit pixel coordinate
-            sta $d000+(i*2)
-            rol $d010
+        //======================
+check_sleeping:{
+        //======================
 
-            lda p_y_lo+i
-            asl
-            lda p_y_hi+i
-            rol
-            sta $d001+(i*2)
-        }
-        rts
+    // is stopped rolling?
+        lda vel_y
+        bpl !abs+
+        eor #$ff
+        clc
+        adc #1
+!abs:   cmp #3
+        bpl still_roll
 
-rotate_water:
+        lda vel_x
+        bpl !abs+
+        eor #$ff
+        clc
+        adc #1
+!abs:   cmp #$a
+        bpl still_roll
+
+        lda #0
+        sta vel_x
+        sta vel_y
+
+        lda #state_WALKING
+        sta state
+still_roll:
+    rts
+}
+
+        //======================
+rotate_water: {
+        //======================
         lda wav_lo
         clc
         adc #40
@@ -527,9 +474,13 @@ rot:
         sty ADDR_CHARSET_DATA+(87*8)
 !:
         rts
+}
 
-collisions:
-        // Convert pos to X/Y cell locations
+        //======================
+collisions: {
+        //======================
+
+    // Convert pos to X/Y cell locations
         clc
         ldy #0
         lda b_x_lo
@@ -658,7 +609,72 @@ safe:
 
 !done:
 
-        rts
+    rts
+}
+
+        //======================
+update_cursor:{
+        //======================
+
+    lda input_state
+    tax
+    and #%00000100
+    bne no_left
+    dec cursor_dir
+no_left:
+    txa
+    and #%00001000
+    bne no_right
+    inc cursor_dir
+no_right:
+
+cursor_pos:
+    lda b_x_lo
+    sta cursor_x_lo
+    lda b_x_hi
+    sta cursor_x_hi
+
+    lda b_y_lo
+    sta cursor_y_lo
+    lda b_y_hi
+    and #%01111111
+    sta cursor_y_hi
+
+    ldx cursor_dir
+
+    ldy #15
+mulx:
+    clc
+    lda cos,x
+    bpl !pos+
+    dec cursor_x_hi
+!pos:
+    adc cursor_x_lo
+    sta cursor_x_lo
+    bcc !nover+
+    inc cursor_x_hi
+!nover:
+    dey
+    bpl mulx
+
+    ldy #15
+muly:
+    clc
+    lda sin,x
+    bpl !pos+
+    dec cursor_y_hi
+!pos:
+    adc cursor_y_lo
+    sta cursor_y_lo
+    bcc !nover+
+    inc cursor_y_hi
+!nover:
+    dey
+    bpl muly
+
+    rts
+}
+
 
 state:  .byte state_WALKING
 state_t:.byte 0
@@ -676,12 +692,14 @@ p_sp:   .byte 25,30,20, 0, 0
 
 grav:   .byte $2
 vel_x:  .byte $0
+vel_x_lo:.byte $0
 vel_y:  .byte $0
+vel_y_lo:.byte $0
 
-acc_x_lo:           .byte $00
-acc_x:  .byte $00
-acc_y_lo:           .byte $00
-acc_y:  .byte $00
+acc_x_lo:.byte $00
+acc_x_hi:.byte $00
+acc_y_lo:.byte $00
+acc_y_hi:.byte $00
 
 cursor_dir:.byte $0
 st_shoot_power:.byte $00
