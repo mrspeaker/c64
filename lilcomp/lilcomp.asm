@@ -32,7 +32,9 @@
         .const state_AIMING = 4
         .const state_ROLLING = 5
 
-        .const phsy_MIN_X_SPEED = 3
+        .const phys_MIN_SPEED = 3
+        .const phys_SLEEP_FRAMES = 10
+        .const phys_GRAVITY = 5
 
         .const tile_SOLID = %00010000
 
@@ -76,7 +78,7 @@ st_wait_fire:
         bne st_aiming
         lda input_state
         and #%00010000
-        beq physics
+    beq physics
         lda #state_AIMING
         sta state
         jmp physics
@@ -86,12 +88,12 @@ st_aiming:
         bne st_rolling
         jsr update_cursor
         jsr take_a_shot
-        jmp physics
+        jmp !done+
 
 st_rolling:
         cmp #state_ROLLING
         bne physics
-        jsr check_sleeping
+    jsr check_sleeping
 
 physics:
         jsr update_physics
@@ -99,6 +101,8 @@ physics:
         jsr collisions
 
 !done:
+    inc state_t
+
 
 }
 
@@ -131,10 +135,8 @@ init_irq:
 irq:
         //======================
 
-//        dec $d020
         dec $d019
         jsr main
-//        inc $d020
         pla
         tay
         pla
@@ -255,7 +257,6 @@ still_walking:
     //======================
 take_a_shot:{
     //======================
-
         // Check for fire
         lda input_state
         and #%00010000
@@ -298,6 +299,9 @@ yep_we_did:
 
 //         dey
                     //         bpl apply_acc
+shoot:
+    jsr reset_physics
+
     ldx cursor_dir
     lda cos,x
     bpl !pos+
@@ -323,6 +327,7 @@ go_rolling:
     lda #state_ROLLING
     sta state
     lda #0
+    sta state_t
     sta st_shoot_power
 
 shot_done:
@@ -435,7 +440,7 @@ xx:
     sta vel_y_hi
 
         // Apply gravity, reset acc
-        lda grav
+        lda #phys_GRAVITY
         sta acc_y_lo
         lda #0
         sta acc_y_hi
@@ -473,7 +478,7 @@ fric_y:
     lda bounced_y
     beq fric_y_done
     dec bounced_y
-
+//    dec $d020
     lda vel_y_hi
     lsr
     ror vel_y_lo
@@ -502,38 +507,45 @@ fric_done:
 check_sleeping:{
         //======================
 
-    // is stopped rolling?
+    // is stopped bouncing?
     lda vel_y_hi
     bpl !pos+
-    lda vel_y_lo
-    cmp #$fd
-    bmi still_roll
-    jmp wait_stop
-!pos:
+    // Going upwards
+    clc
+    eor #$ff
     bne still_roll
     lda vel_y_lo
-    cmp #phys_MIN_X_SPEED
-    bcs still_roll
-    dec $d020
+    clc
+    eor #$ff
+    adc #1
+    cmp #phys_MIN_SPEED
+    bcs !done+
+    jmp wait_stop
+
+!pos:
+    // going downwards
+    bne still_roll
+    lda vel_y_lo
+    cmp #phys_MIN_SPEED
+    bcs !done+
 wait_stop:
-    //dec $d020
     inc sleep_t
     lda sleep_t
-    cmp #20
+    cmp #phys_SLEEP_FRAMES
     bne !done+
-
-    lda #0
-    sta vel_x_lo
-    sta vel_x_hi
-    sta vel_y_lo
-    sta vel_y_hi
-
-    lda #state_WALKING
-    sta state
+    jsr stop_rolling
 still_roll:
     lda #0
     sta sleep_t
 !done:
+    rts
+}
+
+stop_rolling:{
+    jsr reset_physics
+    lda #state_WALKING
+    sta state
+
     rts
 }
 
@@ -619,14 +631,7 @@ collisions: {
         beq safe
 
 collide:
-        lda SAFE_X_LO
-        sta b_x_lo
-        lda SAFE_X_HI
-        sta b_x_hi
-        lda SAFE_Y_LO
-        sta b_y_lo
-        lda SAFE_Y_HI
-        sta b_y_hi
+        jsr reset_to_safe
 /*
    todo: check collision y, x...
  */
@@ -672,7 +677,7 @@ refl_y:
     lda vel_y_hi
     eor #$ff
     sta vel_y_hi
-
+    dec $d020
         lda #1
         sta bounced_y
 
@@ -696,6 +701,33 @@ safe:
 
 !done:
 
+    rts
+}
+
+reset_physics:{
+    lda #0
+    sta acc_x_hi
+    sta acc_x_lo
+    sta acc_y_hi
+    sta acc_y_lo
+    sta vel_y_hi
+    sta vel_y_lo
+    sta vel_x_hi
+    sta vel_x_lo
+    sta bounced_x
+    sta bounced_y
+
+}
+
+reset_to_safe:{
+        lda SAFE_X_LO
+        sta b_x_lo
+        lda SAFE_X_HI
+        sta b_x_hi
+        lda SAFE_Y_LO
+        sta b_y_lo
+        lda SAFE_Y_HI
+        sta b_y_hi
     rts
 }
 
@@ -768,8 +800,8 @@ state_t:.byte 0
 input_state:.byte 0
 
 p_dir:  .byte 1,1,0,0,0
-p_x_lo: .byte 0,0,0,%10000000,0
-p_x_hi: .byte $2e, $75, $20, $10, $0
+p_x_lo: .byte 0,0,0,0,0
+p_x_hi: .byte $2e, $75, $20, $60, $0
 p_y_lo: .byte $00, $00, $00, $00, $0
 p_y_hi: .byte $62, $22, $42, $42, $0
 
@@ -777,29 +809,23 @@ p_x_min:.byte $2c, $29, $d, 0, 0
 p_x_max:.byte $48, $7d, $21, 0, 0
 p_sp:   .byte 25,30,20, 0, 0
 
-grav:   .byte $2
 vel_x_lo:.byte $0
 vel_x_hi:.byte $0
 vel_y_lo:.byte $0
 vel_y_hi:.byte $0
-
-acc_x_lo:.byte $00
-acc_x_hi:.byte $00
-acc_y_lo:.byte $00
-acc_y_hi:.byte $00
 
 cursor_dir:.byte $0
 st_shoot_power:.byte $00
 bounced_x:.byte $0
 bounced_y:.byte $0
 sleep_t:            .byte $0
+t:      .byte 0
 wav_lo: .byte 0
 wav_hi: .byte 0
 
 last_safe_x_cell: .byte 0
 last_safe_y_cell: .byte 0
 
-t:      .byte 0
 
 spr_data:
         .byte %11000000,%00000000,%00000000
@@ -817,11 +843,13 @@ spr_data:
         .fill 18*3, 0
         .byte 0
 
-lol:    .fill 4,$aa
 sin:    .fill 256, sin(toRadians(360/256*i))*128
-lol2:    .fill 4, $55
 cos:    .fill 256, cos(toRadians(360/256*i))*128
-lol3:   .fill 4,$aa
+
+acc_x_hi:.byte $00
+acc_x_lo:.byte $00
+acc_y_hi:.byte $00
+acc_y_lo:.byte $00
 
 SCREEN_ROW_LSB:
         .fill 25, <[$0400 + i * 40]
