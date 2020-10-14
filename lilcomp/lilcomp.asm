@@ -6,7 +6,7 @@
         .label ADDR_CHARSET_ATTRIB_DATA   = $2700 // label = 'charset_attrib_data' (size = $0100).
         .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
 
-        .const MAP_FRAME=1*$3e8
+        .const MAP_FRAME=0*$3e8
         .const NUM_PEEPS = 3
 
         // TODO: these don't need to be zero page
@@ -273,6 +273,9 @@ shoot:
     jsr reset_physics
 
     ldx cursor_dir
+
+    ldy #2
+apply:
     lda cos,x
     bpl !pos+
     dec acc_x_hi
@@ -292,6 +295,8 @@ shoot:
     bcc !nover+
     inc acc_y_hi
 !nover:
+    dey
+    bpl apply
 
 go_rolling:
     lda #state_ROLLING
