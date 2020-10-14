@@ -32,6 +32,8 @@
         .const state_AIMING = 4
         .const state_ROLLING = 5
 
+        .const phsy_MIN_X_SPEED = 3
+
         .const tile_SOLID = %00010000
 
 entry:  {
@@ -261,48 +263,67 @@ take_a_shot:{
 
         // add power.
         inc st_shoot_power
-        dec $d020
         jmp shot_done
 did_we_shoot:
         ldy st_shoot_power
         beq shot_done
 yep_we_did:
-        // scale down power
-        lda st_shoot_power
-        //asl
-        //asl
-        sta st_shoot_power
-        tay
+//         // scale down power
+//         lda st_shoot_power
+//         //asl
+//         //asl
+//         sta st_shoot_power
+//         tay
 
-        ldx cursor_dir
-       // .break
-apply_acc:
-        lda cos,x
-        bpl !pos+
-        dec acc_x_hi
-!pos:   adc acc_x_lo
-        sta acc_x_lo
-        bcc !nover+
-        inc acc_x_hi
+//         ldx cursor_dir
+//        // .break
+// apply_acc:
+//         lda cos,x
+//         bpl !pos+
+//         dec acc_x_hi
+// !pos:   adc acc_x_lo
+//         sta acc_x_lo
+//         bcc !nover+
+//         inc acc_x_hi
+// !nover:
+
+//         lda sin,x
+//         bpl !pos+
+//         dec acc_y_hi
+// !pos:   adc acc_y_lo
+//         sta acc_y_lo
+//         bcc !nover+
+//         inc acc_y_hi
+// !nover:
+
+//         dey
+                    //         bpl apply_acc
+    ldx cursor_dir
+    lda cos,x
+    bpl !pos+
+    dec acc_x_hi
+!pos:
+    adc acc_x_lo
+    sta acc_x_lo
+    bcc !nover+
+    inc acc_x_hi
 !nover:
 
-        lda sin,x
-        bpl !pos+
-        dec acc_y_hi
-!pos:   adc acc_y_lo
-        sta acc_y_lo
-        bcc !nover+
-        inc acc_y_hi
+    lda sin,x
+    bpl !pos+
+    dec acc_y_hi
+!pos:
+    adc acc_y_lo
+    sta acc_y_lo
+    bcc !nover+
+    inc acc_y_hi
 !nover:
-
-        dey
-        bpl apply_acc
 
 go_rolling:
-        lda #state_ROLLING
-        sta state
-        lda #0
-        sta st_shoot_power
+    lda #state_ROLLING
+    sta state
+    lda #0
+    sta st_shoot_power
 
 shot_done:
         rts
@@ -352,60 +373,95 @@ update_physics:{
 
         // Add X acc, and clamp velocity
 xx:
-        lda vel_x
-        clc
-        adc acc_x_hi //todo: should be both bytes
+//         lda vel_x
+//         clc
+//         adc acc_x_hi //todo: should be both bytes
 
-!clamp: bvc !nover+
-        bmi !cmax+
-!cmin:  lda #$80
-        jmp !nover+
-!cmax:  lda #$7f
+// !clamp: bvc !nover+
+//         bmi !cmax+
+// !cmin:  lda #$80
+//         jmp !nover+
+// !cmax:  lda #$7f
 
-!nover: sta vel_x
+                    // !nover: sta vel_x
+    clc
+    lda acc_x_lo
+    adc vel_x_lo
+    sta vel_x_lo
+    lda acc_x_hi
+    adc vel_x_hi
+    sta vel_x_hi
 
         lda #0 // reset acc
         sta acc_x_lo
         sta acc_x_hi
 
-        // update X screen pos
-        clc
-        lda vel_x
-        bpl !pos+
-        dec p_x_hi+3
-!pos:   adc p_x_lo+3
-        sta p_x_lo+3
-        bcc !nover+
-        inc p_x_hi+3
-!nover:
+//         // update X screen pos
+//         clc
+//         lda vel_x
+//         bpl !pos+
+//         dec p_x_hi+3
+// !pos:   adc p_x_lo+3
+//         sta p_x_lo+3
+//         bcc !nover+
+//         inc p_x_hi+3
+                    // !nover:
 
-        // Add Y acc, and clamp velocity
-yy:     lda vel_y
-        clc
-        adc acc_y_hi // todo: should be both bytes
-!clamp: bvc !nover+
-        bmi !cmax+
-!cmin:  lda #$80
-        jmp !nover+
-!cmax:  lda #$7f
-!nover: sta vel_y
+    clc
+    lda vel_x_lo
+    adc p_x_lo+3
+    sta p_x_lo+3
+    lda vel_x_hi
+    adc p_x_hi+3
+    sta p_x_hi+3
+
+//         // Add Y acc, and clamp velocity
+// yy:     lda vel_y
+//         clc
+//         adc acc_y_hi // todo: should be both bytes
+// !clamp: bvc !nover+
+//         bmi !cmax+
+// !cmin:  lda #$80
+//         jmp !nover+
+// !cmax:  lda #$7f
+                    // !nover: sta vel_y
+
+    clc
+    lda acc_y_lo
+    adc vel_y_lo
+    sta vel_y_lo
+    lda acc_y_hi
+    adc vel_y_hi
+    sta vel_y_hi
 
         // Apply gravity, reset acc
         lda grav
-        sta acc_y_hi
-        lda #0
         sta acc_y_lo
+        lda #0
+        sta acc_y_hi
 
-        // update Y screen pos
-        clc
-        lda vel_y
-        bpl !pos+
-        dec p_y_hi+3
-!pos:   adc p_y_lo+3
-        sta p_y_lo+3
-        bcc !nover+
-        inc p_y_hi+3
-!nover:
+//    $f0  11110000
+//   +$ff  11111111
+
+//         // update Y screen pos
+//         clc
+//         lda vel_y
+//         bpl !pos+
+//         dec p_y_hi+3
+// !pos:   adc p_y_lo+3
+//         sta p_y_lo+3
+//         bcc !nover+
+//         inc p_y_hi+3
+// !nover:
+                    //         rts
+    clc
+    lda vel_y_lo
+    adc p_y_lo+3
+    sta p_y_lo+3
+    lda vel_y_hi
+    adc p_y_hi+3
+    sta p_y_hi+3
+
         rts
 }
 
@@ -414,24 +470,30 @@ friction: {
         //======================
 
 fric_y:
-        lda bounced_y
-        beq fric_y_done
-        dec bounced_y
+    lda bounced_y
+    beq fric_y_done
+    dec bounced_y
 
-        lda vel_y
-        cmp #$80 // divide by 2. TODO: better.
-        ror
-        sta vel_y
+    lda vel_y_hi
+    lsr
+    ror vel_y_lo
+    lda vel_y_hi
+    cmp #$80
+    ror
+
 fric_y_done:
 fric_x:
-        lda bounced_x
-        beq fric_done
-        dec bounced_x
+    lda bounced_x
+    beq fric_done
+    dec bounced_x
 
-        lda vel_x
-        cmp #$80
-        ror
-        sta vel_x
+    lda vel_x_hi
+    lsr
+    ror vel_x_lo
+    lda vel_x_hi
+    cmp #$80
+    ror
+
 fric_done:
     rts
 }
@@ -441,29 +503,37 @@ check_sleeping:{
         //======================
 
     // is stopped rolling?
-        lda vel_y
-        bpl !abs+
-        eor #$ff
-        clc
-        adc #1
-!abs:   cmp #3
-        bpl still_roll
+    lda vel_y_hi
+    bpl !pos+
+    lda vel_y_lo
+    cmp #$fd
+    bmi still_roll
+    jmp wait_stop
+!pos:
+    bne still_roll
+    lda vel_y_lo
+    cmp #phys_MIN_X_SPEED
+    bcs still_roll
+    dec $d020
+wait_stop:
+    //dec $d020
+    inc sleep_t
+    lda sleep_t
+    cmp #20
+    bne !done+
 
-        lda vel_x
-        bpl !abs+
-        eor #$ff
-        clc
-        adc #1
-!abs:   cmp #$a
-        bpl still_roll
+    lda #0
+    sta vel_x_lo
+    sta vel_x_hi
+    sta vel_y_lo
+    sta vel_y_hi
 
-        lda #0
-        sta vel_x
-        sta vel_y
-
-        lda #state_WALKING
-        sta state
+    lda #state_WALKING
+    sta state
 still_roll:
+    lda #0
+    sta sleep_t
+!done:
     rts
 }
 
@@ -562,7 +632,6 @@ collide:
  */
 
 reflect:
-        // $ee - safe_x
         lda CELL_CUR_X
         sec
         sbc last_safe_x_cell
@@ -573,14 +642,17 @@ reflect:
         // >0 is hit from left
         // <0 is hit from right
         clc
-        lda vel_x
+        lda vel_x_lo
         eor #$ff
         adc #1
-        sta vel_x
-        dec $d020
+    sta vel_x_lo
+    lda vel_x_hi
+    eor #$ff
+    adc #0
+    sta vel_x_hi
+
         lda #1
         sta bounced_x
-
 
 refl_y:
         // $ef - safe_y
@@ -593,10 +665,13 @@ refl_y:
         // >0 is hit from bottom
         // <0 is hit from top
         clc
-        lda vel_y
+        lda vel_y_lo
         eor #$ff
-        adc #1
-        sta vel_y
+    adc #1
+    sta vel_y_lo
+    lda vel_y_hi
+    eor #$ff
+    sta vel_y_hi
 
         lda #1
         sta bounced_y
@@ -703,10 +778,10 @@ p_x_max:.byte $48, $7d, $21, 0, 0
 p_sp:   .byte 25,30,20, 0, 0
 
 grav:   .byte $2
-vel_x:  .byte $0
 vel_x_lo:.byte $0
-vel_y:  .byte $0
+vel_x_hi:.byte $0
 vel_y_lo:.byte $0
+vel_y_hi:.byte $0
 
 acc_x_lo:.byte $00
 acc_x_hi:.byte $00
@@ -717,8 +792,7 @@ cursor_dir:.byte $0
 st_shoot_power:.byte $00
 bounced_x:.byte $0
 bounced_y:.byte $0
-
-
+sleep_t:            .byte $0
 wav_lo: .byte 0
 wav_hi: .byte 0
 
@@ -744,9 +818,9 @@ spr_data:
         .byte 0
 
 lol:    .fill 4,$aa
-sin:    .fill 256, round(sin(toRadians(360/256*i))*128)
+sin:    .fill 256, sin(toRadians(360/256*i))*128
 lol2:    .fill 4, $55
-cos:    .fill 256, round(cos(toRadians(360/256*i))*128)
+cos:    .fill 256, cos(toRadians(360/256*i))*128
 lol3:   .fill 4,$aa
 
 SCREEN_ROW_LSB:
