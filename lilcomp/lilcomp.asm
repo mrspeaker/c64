@@ -32,9 +32,9 @@
         .const state_AIMING = 4
         .const state_ROLLING = 5
 
-        .const phys_MIN_SPEED = 3
+        .const phys_MIN_SPEED = 5
         .const phys_SLEEP_FRAMES = 10
-        .const phys_GRAVITY = 5
+        .const phys_GRAVITY = 10
 
         .const tile_SOLID = %00010000
 
@@ -268,37 +268,7 @@ take_a_shot:{
 did_we_shoot:
         ldy st_shoot_power
         beq shot_done
-yep_we_did:
-//         // scale down power
-//         lda st_shoot_power
-//         //asl
-//         //asl
-//         sta st_shoot_power
-//         tay
 
-//         ldx cursor_dir
-//        // .break
-// apply_acc:
-//         lda cos,x
-//         bpl !pos+
-//         dec acc_x_hi
-// !pos:   adc acc_x_lo
-//         sta acc_x_lo
-//         bcc !nover+
-//         inc acc_x_hi
-// !nover:
-
-//         lda sin,x
-//         bpl !pos+
-//         dec acc_y_hi
-// !pos:   adc acc_y_lo
-//         sta acc_y_lo
-//         bcc !nover+
-//         inc acc_y_hi
-// !nover:
-
-//         dey
-                    //         bpl apply_acc
 shoot:
     jsr reset_physics
 
@@ -378,17 +348,6 @@ update_physics:{
 
         // Add X acc, and clamp velocity
 xx:
-//         lda vel_x
-//         clc
-//         adc acc_x_hi //todo: should be both bytes
-
-// !clamp: bvc !nover+
-//         bmi !cmax+
-// !cmin:  lda #$80
-//         jmp !nover+
-// !cmax:  lda #$7f
-
-                    // !nover: sta vel_x
     clc
     lda acc_x_lo
     adc vel_x_lo
@@ -401,17 +360,7 @@ xx:
         sta acc_x_lo
         sta acc_x_hi
 
-//         // update X screen pos
-//         clc
-//         lda vel_x
-//         bpl !pos+
-//         dec p_x_hi+3
-// !pos:   adc p_x_lo+3
-//         sta p_x_lo+3
-//         bcc !nover+
-//         inc p_x_hi+3
-                    // !nover:
-
+    // update X screen pos
     clc
     lda vel_x_lo
     adc p_x_lo+3
@@ -420,17 +369,8 @@ xx:
     adc p_x_hi+3
     sta p_x_hi+3
 
-//         // Add Y acc, and clamp velocity
-// yy:     lda vel_y
-//         clc
-//         adc acc_y_hi // todo: should be both bytes
-// !clamp: bvc !nover+
-//         bmi !cmax+
-// !cmin:  lda #$80
-//         jmp !nover+
-// !cmax:  lda #$7f
-                    // !nover: sta vel_y
-
+    // Add Y acc, and clamp velocity
+yy:
     clc
     lda acc_y_lo
     adc vel_y_lo
@@ -445,20 +385,7 @@ xx:
         lda #0
         sta acc_y_hi
 
-//    $f0  11110000
-//   +$ff  11111111
-
-//         // update Y screen pos
-//         clc
-//         lda vel_y
-//         bpl !pos+
-//         dec p_y_hi+3
-// !pos:   adc p_y_lo+3
-//         sta p_y_lo+3
-//         bcc !nover+
-//         inc p_y_hi+3
-// !nover:
-                    //         rts
+    // update Y screen pos
     clc
     lda vel_y_lo
     adc p_y_lo+3
@@ -467,7 +394,7 @@ xx:
     adc p_y_hi+3
     sta p_y_hi+3
 
-        rts
+    rts
 }
 
         //======================
@@ -478,13 +405,11 @@ fric_y:
     lda bounced_y
     beq fric_y_done
     dec bounced_y
-//    dec $d020
+
     lda vel_y_hi
-    lsr
+    cmp #$80        //copy sign to c
+    ror vel_y_hi
     ror vel_y_lo
-    lda vel_y_hi
-    cmp #$80
-    ror
 
 fric_y_done:
 fric_x:
@@ -493,11 +418,9 @@ fric_x:
     dec bounced_x
 
     lda vel_x_hi
-    lsr
-    ror vel_x_lo
-    lda vel_x_hi
     cmp #$80
-    ror
+    ror vel_x_hi
+    ror vel_x_lo
 
 fric_done:
     rts
@@ -677,8 +600,7 @@ refl_y:
     lda vel_y_hi
     eor #$ff
     sta vel_y_hi
-    dec $d020
-        lda #1
+    lda #1
         sta bounced_y
 
         jmp !done+
