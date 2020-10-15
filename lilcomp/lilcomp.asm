@@ -125,7 +125,7 @@ init_irq:{
     sta $314
     stx $315
 
-    lda #20
+    lda #$ff
     sta $d012
     lda $d011
     and #%01111111
@@ -401,7 +401,7 @@ reset_physics:{
     sta vel_x_lo
     sta bounced_x
     sta bounced_y
-
+    rts
 }
 
         //======================
