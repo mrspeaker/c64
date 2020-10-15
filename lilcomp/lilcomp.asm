@@ -39,6 +39,8 @@
         .const phys_SLEEP_FRAMES = 10
         .const phys_GRAVITY = 200
 
+        .const st_walk_SPEED = 40
+
         .const tile_SOLID = %00010000
 
 entry:  {
@@ -91,7 +93,7 @@ st_aiming:
         bne st_rolling
         jsr update_cursor
         jsr take_a_shot
-        jmp !done+
+        jmp physics
 
 st_rolling:
         cmp #state_ROLLING
@@ -242,18 +244,46 @@ draw_screen:
 walking: {
     //======================
     lda input_state
-wup:    lsr
-        bcs wdown
-        dec b_y_hi
+wup:lsr
+    bcs wdown
+    tax
+    sec
+    lda b_y_lo
+    sbc #st_walk_SPEED
+    sta b_y_lo
+    bcs !+
+    dec b_y_hi
+!:  txa
 wdown:  lsr
-        bcs wleft
-        inc b_y_hi
+    bcs wleft
+    tax
+    clc
+    lda b_y_lo
+    adc #st_walk_SPEED
+    sta b_y_lo
+    bcc !+
+    inc b_y_hi
+!:  txa
 wleft:  lsr
-        bcs wright
-        dec b_x_hi
+    bcs wright
+    tax
+    sec
+    lda b_x_lo
+    sbc #st_walk_SPEED
+    sta b_x_lo
+    bcs !+
+    dec b_x_hi
+!:  txa
 wright: lsr
-        bcs wfire
-        inc b_x_hi
+    bcs wfire
+    tax
+    clc
+    lda b_x_lo
+    adc #st_walk_SPEED
+    sta b_x_lo
+    bcc !+
+    inc b_x_hi
+!:  txa
 wfire:  lsr
         bcs still_walking
         lda #state_WAIT_AIM_FIRE
@@ -517,6 +547,10 @@ stop_rolling:{
     lda #state_WALKING
     sta state
 
+    lda #0
+    sta cursor_x_hi
+    sta cursor_y_hi
+
     rts
 }
 
@@ -775,8 +809,8 @@ p_x_hi: .byte $2e, $75, $20, $60, $0
 p_y_lo: .byte $00, $00, $00, $00, $0
 p_y_hi: .byte $62, $22, $42, $42, $0
 
-p_x_min:.byte $2c, $29, $d, 0, 0
-p_x_max:.byte $48, $7d, $21, 0, 0
+p_x_min:.byte $2d, $29, $11, 0, 0
+p_x_max:.byte $47, $7d, $27, 0, 0
 p_sp:   .byte 25,30,20, 0, 0
 
 vel_x_lo:.byte $0
