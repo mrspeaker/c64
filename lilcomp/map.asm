@@ -1,5 +1,5 @@
 
-* =  ADDR_CHAR_MAP_DATA
+* =  ADDR_CHAR_MAP_DATA "map data"
 map_data:
 
 .byte $20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20

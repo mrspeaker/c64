@@ -1,6 +1,6 @@
 // CHAR SET DATA : 256 (8 byte) chars : total size is 2048 ($0800) bytes.
 
-* =  ADDR_CHARSET_DATA
+* = ADDR_CHARSET_DATA "Charset Data"
 charset_data:
 
 .byte $00,$e0,$f8,$1c,$0e,$0c,$0e,$0a,$18,$3c,$66,$7e,$66,$66,$66,$00
@@ -136,7 +136,7 @@ charset_data:
 // CHAR SET ATTRIBUTE DATA : 256 attributes : total size is 256 ($0100) bytes.
 // nb. Upper nybbles = Material, Lower nybbles = Colour.
 
-* =  ADDR_CHARSET_ATTRIB_DATA
+* =  ADDR_CHARSET_ATTRIB_DATA "Charset Attrib"
 charset_attrib_data:
 
 .byte $06,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01
