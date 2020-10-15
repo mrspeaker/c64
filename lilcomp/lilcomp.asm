@@ -17,6 +17,9 @@
         .const CELL_CUR_X = $ee
         .const CELL_CUR_Y = $ef
 
+        .const TMP_LO = $e8
+        .const TMP_HI = $e9
+
         .const b_x_lo = p_x_lo+3
         .const b_x_hi = p_x_hi+3
         .const b_y_lo = p_y_lo+3
@@ -34,7 +37,7 @@
 
         .const phys_MIN_SPEED = 5
         .const phys_SLEEP_FRAMES = 10
-        .const phys_GRAVITY = 10
+        .const phys_GRAVITY = 200
 
         .const tile_SOLID = %00010000
 
@@ -263,18 +266,20 @@ take_a_shot:{
         bne did_we_shoot
 
         // add power.
-        inc st_shoot_power
+    inc st_shoot_power
+    dec $d020
         jmp shot_done
 did_we_shoot:
         ldy st_shoot_power
         beq shot_done
 
 shoot:
+    lda #0
+    sta $d020
     jsr reset_physics
 
     ldx cursor_dir
-
-    ldy #2
+    ldy st_shoot_power
 apply:
     lda cos,x
     bpl !pos+
@@ -353,11 +358,24 @@ update_physics:{
 
         // Add X acc, and clamp velocity
 xx:
-    clc
     lda acc_x_lo
+    sta TMP_LO
+    lda acc_x_hi
+    sta TMP_HI
+
+    // Divde acceleration down.
+    .for(var i=0;i<4;i++){
+        lda TMP_HI
+        cmp #$80    //copy sign to c
+        ror TMP_HI
+        ror TMP_LO
+    }
+
+    clc
+    lda TMP_LO
     adc vel_x_lo
     sta vel_x_lo
-    lda acc_x_hi
+    lda TMP_HI
     adc vel_x_hi
     sta vel_x_hi
 
@@ -376,19 +394,33 @@ xx:
 
     // Add Y acc, and clamp velocity
 yy:
-    clc
     lda acc_y_lo
+    sta TMP_LO
+    lda acc_y_hi
+    sta TMP_HI
+
+    // divide acceleartion down
+    .for(var i=0;i<4;i++){
+        lda TMP_HI
+        cmp #$80    //copy sign to c
+        ror TMP_HI
+        ror TMP_LO
+    }
+
+    clc
+    lda TMP_LO
     adc vel_y_lo
     sta vel_y_lo
-    lda acc_y_hi
+    lda TMP_HI
     adc vel_y_hi
     sta vel_y_hi
 
-        // Apply gravity, reset acc
-        lda #phys_GRAVITY
-        sta acc_y_lo
-        lda #0
-        sta acc_y_hi
+
+    // Apply gravity, reset acc
+    lda #phys_GRAVITY
+    sta acc_y_lo
+    lda #0
+    sta acc_y_hi
 
     // update Y screen pos
     clc
@@ -415,6 +447,12 @@ fric_y:
     cmp #$80        //copy sign to c
     ror vel_y_hi
     ror vel_y_lo
+
+    // testing: decrease x on every y hit
+     lda vel_x_hi
+    cmp #$80
+    ror vel_x_hi
+    ror vel_x_lo
 
 fric_y_done:
 fric_x:
@@ -688,7 +726,7 @@ cursor_pos:
 
     ldx cursor_dir
 
-    ldy #15
+    ldy #10
 mulx:
     clc
     lda cos,x
@@ -703,7 +741,7 @@ mulx:
     dey
     bpl mulx
 
-    ldy #15
+    ldy #10
 muly:
     clc
     lda sin,x
@@ -770,8 +808,11 @@ spr_data:
         .fill 18*3, 0
         .byte 0
 
-sin:    .fill 256, sin(toRadians(360/256*i))*128
-cos:    .fill 256, cos(toRadians(360/256*i))*128
+lol:    .fill 8,1
+cos:    .fill 256, cos(toRadians(360/256*i))*127
+lol2:   .fill 8, 1
+sin:    .fill 256, sin(toRadians(360/256*i))*127
+lol3:   .fill 8,1
 
 acc_x_hi:.byte $00
 acc_x_lo:.byte $00
