@@ -192,7 +192,7 @@ init_sprites:{
         //======================
 position_sprites:{
         //======================
-        .for(var i=NUM_PEEPS+1;i>=0;i--) {
+    .for(var i=NUM_PEEPS+1;i>=0;i--) {
             lda p_x_lo+i // xpos is 16-bit, 9.7 fixed point (9th bit is MSB sprite X)
             asl     // ... carry has the highest bit of our low byte
             lda p_x_hi+i
@@ -206,8 +206,13 @@ position_sprites:{
             lda p_y_hi+i
             rol
             sta $d001+(i*2)
-        }
-        rts
+    }
+    // Align cursor
+    // TODO: account for MSB carry!
+    dec $d008
+    dec $d008
+    dec $d009
+    rts
 }
 
 copy_chars:
