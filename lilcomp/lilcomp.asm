@@ -415,13 +415,17 @@ xx:
     lda acc_x_hi
     sta TMP_HI
 
-    // Scale down acceleration.
-    // This gets the "range" of powers
-    // feeling ok. Each itteration is
-    // a 16bit shift-right
-    // TODO: shouldn't this just be
-    // calculated when the force is added?
-    // DERP! Yep. DOn't do TMP blah here...
+    /*
+       Scale acceleration down... this is so we have a more
+       useful "range" of power in a shot.
+       It would be much faster to do this scaling at the time
+       that the force was applied - but there would be more
+       accumulated error when more forces are combined.
+       However, we only have 2: the shot, and gravity.
+       So, TODO: look at the numbers and see if scaling down the
+       shot in `take_a_shot` is the same as adding forces and
+       scaling here.
+     */
     .for(var i=0;i<4;i++){
         lda TMP_HI
         cmp #$80    //copy sign to c
