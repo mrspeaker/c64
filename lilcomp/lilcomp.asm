@@ -41,7 +41,7 @@
         .const phys_SLEEP_FRAMES = 10
         .const phys_GRAVITY = 200
 
-        .const st_walk_SPEED = 40
+        .const st_walk_SPEED = 80
 
         .const tile_SOLID = %00010000
 
@@ -309,7 +309,7 @@ wfire:  lsr
 still_walking:
     lda player_moved
     beq !done+
-    jsr walk_collisions
+    jsr walk_collision
 !done:
     rts
 }
