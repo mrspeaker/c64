@@ -14,8 +14,9 @@
         .const SAFE_Y_HI = $ed
         .const CELL_CUR_X = $ee
         .const CELL_CUR_Y = $ef
-        .const TMP_LO = $e8
-        .const TMP_HI = $e9
+
+        .const TMP1 = $e8
+        .const TMP2 = $e9
         .const TMP3 = $e6
         .const TMP4 = $e7
 
@@ -104,6 +105,7 @@ st_rolling:
 physics:
     jsr step_physics
     // TODO: switched fric and collis, but it broke walking move.
+    // why did I switch them? It fixed SOMETHING...
     jsr apply_friction
     jsr check_collisions
 
@@ -249,54 +251,106 @@ draw_screen:{
     //======================
 walking: {
     //======================
+    lda #0
+    sta player_moved
     lda input_state
 wup:lsr
-    bcs wdown
-    tax
-    sec
-    lda b_y_lo
-    sbc #st_walk_SPEED
-    sta b_y_lo
-    bcs !+
-    dec b_y_hi
-!:  txa
+//     bcs wdown
+//     tax
+//     sec
+//     lda b_y_lo
+//     sbc #st_walk_SPEED
+//     sta b_y_lo
+//     bcs !+
+//     dec b_y_hi
+// !:  txa
 wdown:  lsr
-    bcs wleft
-    tax
-    clc
-    lda b_y_lo
-    adc #st_walk_SPEED
-    sta b_y_lo
-    bcc !+
-    inc b_y_hi
-!:  txa
+//     bcs wleft
+//     tax
+//     clc
+//     lda b_y_lo
+//     adc #st_walk_SPEED
+//     sta b_y_lo
+//     bcc !+
+//     inc b_y_hi
+// !:  txa
 wleft:  lsr
     bcs wright
     tax
-    sec
-    lda b_x_lo
-    sbc #st_walk_SPEED
-    sta b_x_lo
-    bcs !+
+    lda #-st_walk_SPEED
+    bpl !pos+
     dec b_x_hi
+!pos:
+    adc b_x_lo
+    sta b_x_lo
+    bcc !nover+
+    inc b_x_hi
+!nover:
+    inc player_moved
 !:  txa
 wright: lsr
     bcs wfire
     tax
-    clc
-    // TODO: make sure walk move is valid.
-    lda b_x_lo
-    adc #st_walk_SPEED
+    lda #st_walk_SPEED
+    bpl !pos+
+    dec b_x_hi
+!pos:
+    adc b_x_lo
     sta b_x_lo
-    bcc !+
+    bcc !nover+
     inc b_x_hi
-
+!nover:
+    inc player_moved
 !:  txa
 wfire:  lsr
     bcs still_walking
     lda #state_WAIT_AIM_FIRE
     sta state
 still_walking:
+    lda player_moved
+    beq !done+
+    jsr walk_collisions
+!done:
+    rts
+}
+
+walk_collision:{
+    // Check cell left/right
+    lda b_x_lo
+    sta TMP1
+    lda b_x_hi
+    sta TMP2
+    lda b_y_lo
+    sta TMP3
+    lda b_y_hi
+    sta TMP4
+    jsr get_cell
+    and #tile_SOLID
+    bne !collide+
+
+    // Check cell under
+    lda b_x_lo
+    sta TMP1
+    lda b_x_hi
+    sta TMP2
+    lda b_y_lo
+    sta TMP3
+    clc
+    lda b_y_hi
+    adc #1
+    sta TMP4
+    jsr get_cell
+    and #tile_SOLID
+    beq !collide+
+
+!safe:
+    jsr store_safe_location
+    jmp !done+
+
+!collide:
+    jsr reset_to_safe
+
+!done:
     rts
 }
 
@@ -416,9 +470,9 @@ step_physics:{
         // Add X acc, and clamp velocity
 xx:
     lda acc_x_lo
-    sta TMP_LO
+    sta TMP1
     lda acc_x_hi
-    sta TMP_HI
+    sta TMP2
 
     /*
        Scale acceleration down... this is so we have a more
@@ -433,17 +487,17 @@ xx:
        scaling here.
      */
     .for(var i=0;i<4;i++){
-        lda TMP_HI
+        lda TMP2
         cmp #$80    //copy sign to c
-        ror TMP_HI
-        ror TMP_LO
+        ror TMP2
+        ror TMP1
     }
 
     clc
-    lda TMP_LO
+    lda TMP1
     adc vel_x_lo
     sta vel_x_lo
-    lda TMP_HI
+    lda TMP2
     adc vel_x_hi
     sta vel_x_hi
 
@@ -463,23 +517,23 @@ xx:
     // Add Y acc, and clamp velocity
 yy:
     lda acc_y_lo
-    sta TMP_LO
+    sta TMP1
     lda acc_y_hi
-    sta TMP_HI
+    sta TMP2
 
     // divide acceleartion down
     .for(var i=0;i<4;i++){
-        lda TMP_HI
+        lda TMP2
         cmp #$80    //copy sign to c
-        ror TMP_HI
-        ror TMP_LO
+        ror TMP2
+        ror TMP1
     }
 
     clc
-    lda TMP_LO
+    lda TMP1
     adc vel_y_lo
     sta vel_y_lo
-    lda TMP_HI
+    lda TMP2
     adc vel_y_hi
     sta vel_y_hi
 
@@ -694,9 +748,9 @@ get_cell:            {
  // Convert pos to X/Y cell locations
     clc
     ldy #0
-    lda TMP_LO
+    lda TMP1
     asl
-    lda TMP_HI
+    lda TMP2
     rol
     bcc !+
     cmp #80         // right edge of screen (why 80?)
@@ -718,7 +772,7 @@ get_cell:            {
     bne !+
     adc #31         // MSB was set: add more tiles
 !:
-    sta TMP_LO // save back out for later
+    sta TMP1 // save back out for later
     tax
 
 
@@ -733,22 +787,22 @@ get_cell:            {
     lsr
     lsr
     lsr
-    sta TMP_HI // save back out for later
+    sta TMP2 // save back out for later
     tay
 
     lda SCREEN_ROW_LSB,y
-    sta TMP_LO
+    sta TMP1
     lda SCREEN_ROW_MSB,y
-    sta TMP_HI
+    sta TMP2
     txa
     tay
 
     // Check tile attrib
-    lda (TMP_LO),y
+    lda (TMP1),y
     tax
     lda charset_attrib_data,x
-    ldx TMP_LO
-    ldy TMP_HI
+    ldx TMP1
+    ldy TMP2
 !done:
     rts
 }
@@ -917,6 +971,7 @@ vel_y_hi:.byte $0
 
 last_safe_x_cell:.byte 0
 last_safe_y_cell: .byte 0
+player_moved:.byte 0
 
 cursor_angle:.byte $0
 st_shoot_power:.byte $00
