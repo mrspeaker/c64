@@ -681,63 +681,10 @@ check_collisions: {
     lda b_y_hi
     sta TMP4
     jsr get_cell
-    sta $55
-    stx $56
-    sty $57
 
-    // Convert pos to X/Y cell locations
-    clc
-    ldy #0
-    lda b_x_lo
-    asl
-    lda b_x_hi
-    rol
-    bcc !+
-    cmp #80         // right edge of screen (why 80?)
-    bcc !e+
-    rts
-!e:
-    cmp #24         // left hidden area
-    bcc !+
-    ldy #1          // MSB is set
-!:
-    sec
-    sbc #24         // left hidden area
-    lsr
-    lsr
-    lsr
-    cpy #1          // MSB was set?
-    bne !+
-    adc #31         // MSB was set: add more tiles
-!:
-    tax
-    sta CELL_CUR_X
+    stx CELL_CUR_X
+    sty CELL_CUR_Y
 
-    // Y
-    clc
-    lda b_y_lo
-    asl
-    lda b_y_hi
-    rol
-    sec
-    sbc #45
-    lsr
-    lsr
-    lsr
-    tay
-    sta CELL_CUR_Y
-
-    lda SCREEN_ROW_LSB,y
-    sta $10
-    lda SCREEN_ROW_MSB,y
-    sta $11
-    txa
-    tay
-
-    // Check tile attrib
-    lda ($10),y
-    tax
-    lda charset_attrib_data,x
     and #%11110000
     tax
     cmp #tile_SOLID
