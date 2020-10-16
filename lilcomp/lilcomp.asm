@@ -43,7 +43,9 @@
 
         .const st_walk_SPEED = 80
 
-        .const tile_SOLID = %00010000
+        .const tile_SOLID  = %00010000
+        .const tile_HOLE   = %00100000
+        .const tile_PICKUP = %00110000
 
 entry:  {
     lda #$0
@@ -349,7 +351,6 @@ walk_collision:{
 
 !collide:
     jsr reset_to_safe
-
 !done:
     rts
 }
@@ -724,9 +725,14 @@ check_collisions: {
     lda ($10),y
     tax
     lda charset_attrib_data,x
-    and #tile_SOLID
-    bne collide
-
+    and #%11110000
+    tax
+    cmp #tile_SOLID
+    beq collide
+    txa
+    cmp #tile_PICKUP
+    bne safe
+    jsr get_pickup
 safe:
     jsr store_safe_location
     jmp !done+
@@ -736,6 +742,32 @@ collide:
     jsr reflect_bounce
 
 !done:
+    rts
+}
+
+get_pickup:{
+                    // in a = cell value
+                    // x = cell
+                    //y = ycell
+    lda #55
+    jsr set_cell
+    rts
+}
+
+set_cell:{
+    // in: a==cell value, x=x, y=y
+    sta TMP3
+    lda SCREEN_ROW_LSB,y
+    sta TMP1
+    lda SCREEN_ROW_MSB,y
+    sta TMP2
+
+    txa
+    tay
+
+    lda TMP3
+    .break;
+    sta (TMP1),y
     rts
 }
 
