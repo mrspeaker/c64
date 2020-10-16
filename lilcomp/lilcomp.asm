@@ -670,7 +670,20 @@ rot:
 
         //======================
 check_collisions: {
-        //======================
+                    //======================
+
+    lda b_x_lo
+    sta TMP1
+    lda b_x_hi
+    sta TMP2
+    lda b_y_lo
+    sta TMP3
+    lda b_y_hi
+    sta TMP4
+    jsr get_cell
+    sta $55
+    stx $56
+    sty $57
 
     // Convert pos to X/Y cell locations
     clc
@@ -750,6 +763,8 @@ get_pickup:{
                     // x = cell
                     //y = ycell
     lda #55
+    ldx CELL_CUR_X
+    ldy CELL_CUR_Y
     jsr set_cell
     rts
 }
@@ -766,7 +781,6 @@ set_cell:{
     tay
 
     lda TMP3
-    .break;
     sta (TMP1),y
     rts
 }
@@ -823,14 +837,14 @@ get_cell:            {
     tay
 
     lda SCREEN_ROW_LSB,y
-    sta TMP1
+    sta TMP3
     lda SCREEN_ROW_MSB,y
-    sta TMP2
+    sta TMP4
     txa
     tay
 
     // Check tile attrib
-    lda (TMP1),y
+    lda (TMP3),y
     tax
     lda charset_attrib_data,x
     ldx TMP1
