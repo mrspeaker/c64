@@ -47,6 +47,8 @@
         .const tile_HOLE   = %00100000
         .const tile_PICKUP = %00110000
 
+        .const tile_EMPTY_ID = 32
+
 entry:  {
     lda #$0
     sta $d020
@@ -713,7 +715,7 @@ get_pickup:{
                     // in a = cell value
                     // x = cell
                     //y = ycell
-    lda #55
+    lda #tile_EMPTY_ID
     ldx CELL_CUR_X
     ldy CELL_CUR_Y
     jsr set_cell
