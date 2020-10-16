@@ -685,6 +685,75 @@ collide:
     rts
 }
 
+get_cell:            {
+    //in: tmp0-4 x_lo,x_hi,y_lo,y_hi
+    // out: a == cell value
+    //      x == x cell
+    //      y == y cell
+
+ // Convert pos to X/Y cell locations
+    clc
+    ldy #0
+    lda TMP_LO
+    asl
+    lda TMP_HI
+    rol
+    bcc !+
+    cmp #80         // right edge of screen (why 80?)
+    bcc !e+
+    dec $d020
+    lda #0
+    jmp !done+
+!e:
+    cmp #24         // left hidden area
+    bcc !+
+    ldy #1          // MSB is set
+!:
+    sec
+    sbc #24         // left hidden area
+    lsr
+    lsr
+    lsr
+    cpy #1          // MSB was set?
+    bne !+
+    adc #31         // MSB was set: add more tiles
+!:
+    sta TMP_LO // save back out for later
+    tax
+
+
+    // Y
+    clc
+    lda TMP3
+    asl
+    lda TMP4
+    rol
+    sec
+    sbc #45
+    lsr
+    lsr
+    lsr
+    sta TMP_HI // save back out for later
+    tay
+
+    lda SCREEN_ROW_LSB,y
+    sta TMP_LO
+    lda SCREEN_ROW_MSB,y
+    sta TMP_HI
+    txa
+    tay
+
+    // Check tile attrib
+    lda (TMP_LO),y
+    tax
+    lda charset_attrib_data,x
+    ldx TMP_LO
+    ldy TMP_HI
+!done:
+    rts
+}
+
+
 reflect_bounce:{
 /*
    todo: check collision y, x...
