@@ -1,7 +1,6 @@
 
 * =  ADDR_CHAR_MAP_DATA "map data"
 // MAP DATA : 1 (40x25) map : total size is 1000 ($03e8) bytes.
-
 map_data:
 
 .byte $20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20

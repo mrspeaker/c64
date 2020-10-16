@@ -40,6 +40,7 @@
         .const phys_MIN_SPEED = 5
         .const phys_SLEEP_FRAMES = 10
         .const phys_GRAVITY = 200
+        .const phys_AIR_MOVE_SPEED = 40
 
         .const st_walk_SPEED = 80
 
@@ -104,6 +105,7 @@ st_aiming:
 st_rolling:
     cmp #state_ROLLING
     bne physics
+    jsr apply_move_force
     jsr check_sleeping
 
 physics:
@@ -392,6 +394,8 @@ did_we_shoot:
     beq shot_done
 
 shoot:
+    jsr hide_cursor
+
     lda #0
     sta $d020
     jsr reset_physics
@@ -612,6 +616,35 @@ fric_done:
     rts
 }
 
+apply_move_force:{
+    lda input_state
+    and #%00000100
+    beq left
+    lda input_state
+    and #%00001000
+    beq right
+    jmp done
+left:
+    sec
+    lda acc_x_lo
+    sbc #phys_AIR_MOVE_SPEED
+    sta acc_x_lo
+    bcs !+
+    dec acc_x_hi
+
+    jmp done
+right:
+    clc
+    lda acc_x_lo
+    adc #phys_AIR_MOVE_SPEED
+    sta acc_x_lo
+    bcc !+
+    inc acc_x_hi
+!:
+done:
+    rts
+}
+
         //======================
 check_sleeping:{
         //======================
@@ -652,7 +685,6 @@ still_roll:
 
 stop_rolling:{
     jsr reset_physics
-    jsr hide_cursor
 
     lda #state_WALKING
     sta state
@@ -899,6 +931,8 @@ both_axis_hit:
 //    dec $d021
     ldx vel_x_hi
     ldy vel_y_hi
+    // TODO: bug here - bounces of X & Y when should only
+    // bounce off one depending on... velocity?
 //    .break
 //    bit $ea
 !:
@@ -1018,7 +1052,7 @@ last_safe_x_cell:.byte 0
 last_safe_y_cell: .byte 0
 player_moved:.byte 0
 
-cursor_angle:.byte $0
+cursor_angle:.byte -256/4
 st_shoot_power:.byte $00
 bounced_x:.byte $0
 bounced_y:.byte $0
@@ -1045,11 +1079,14 @@ spr_data:
         .fill 15*3, 0
         .byte 0
 
-        .byte %00110000,%00000000,%00000000
-        .byte %11001100,%00000000,%00000000
-        .byte %00110000,%00000000,%00000000
-        .fill 18*3, 0
-        .byte 0
+.byte $15,$00,$00,$59,$40,$00,$62,$40
+.byte $00,$59,$40,$00,$15,$00,$00,$00
+.byte $00,$00,$00,$00,$00,$00,$00,$00
+.byte $00,$00,$00,$00,$00,$00,$00,$00
+.byte $00,$00,$00,$00,$00,$00,$00,$00
+.byte $00,$00,$00,$00,$00,$00,$00,$00
+.byte $00,$00,$00,$00,$00,$00,$00,$00
+.byte $00,$00,$00,$00,$00,$00,$00,$82
 
 SCREEN_ROW_LSB:
         .fill 25, <[$0400 + i * 40]

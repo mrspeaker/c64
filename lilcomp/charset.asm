@@ -39,13 +39,13 @@ charset_data:
 .byte $18,$18,$18,$18,$18,$18,$18,$18,$00,$00,$00,$ff,$ff,$00,$00,$00
 .byte $00,$00,$00,$00,$00,$01,$02,$04,$00,$00,$00,$00,$00,$80,$c0,$a0
 .byte $4b,$f7,$ef,$55,$00,$00,$00,$00,$30,$30,$30,$30,$30,$30,$30,$30
-.byte $00,$44,$28,$10,$28,$44,$00,$ff,$ec,$d2,$3f,$ff,$ff,$bd,$f7,$da
+.byte $00,$44,$28,$10,$28,$44,$00,$ff,$fc,$72,$fd,$ff,$ff,$ff,$f7,$de
 .byte $18,$18,$1c,$0f,$07,$00,$00,$00,$18,$18,$38,$f0,$e0,$00,$00,$00
 .byte $c0,$c0,$c0,$c0,$c0,$c0,$ff,$ff,$c0,$e0,$70,$38,$1c,$0e,$07,$03
-.byte $fd,$e2,$3f,$ff,$ff,$9d,$f7,$da,$ff,$ff,$c0,$c0,$c0,$c0,$c0,$c0
-.byte $ff,$ff,$03,$03,$03,$03,$03,$03,$ed,$d2,$3f,$ff,$ff,$9d,$f7,$da
+.byte $ff,$d6,$3f,$ff,$ff,$ff,$f7,$de,$ff,$ff,$c0,$c0,$c0,$c0,$c0,$c0
+.byte $ff,$ff,$03,$03,$03,$03,$03,$03,$ff,$de,$3f,$ff,$ff,$ff,$f7,$de
 .byte $00,$00,$00,$00,$00,$00,$00,$fe,$36,$7f,$7f,$7f,$3e,$1c,$08,$00
-.byte $60,$60,$60,$60,$60,$60,$60,$60,$2d,$52,$3f,$ff,$ff,$bd,$f7,$5a
+.byte $60,$60,$60,$60,$60,$60,$60,$60,$3f,$4e,$bf,$ff,$ff,$ff,$ef,$7b
 .byte $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$be,$55,$aa,$d5,$ff,$ff,$ff,$7e
 .byte $18,$18,$66,$66,$18,$18,$3c,$00,$06,$06,$06,$06,$06,$06,$06,$06
 .byte $00,$1c,$22,$22,$22,$1c,$00,$00,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff
@@ -133,8 +133,6 @@ charset_data:
 .byte $0f,$0f,$0f,$0f,$ff,$ff,$ff,$ff,$0f,$0f,$0f,$0f,$f0,$f0,$f0,$f0
 
 
-// CHAR SET ATTRIBUTE DATA : 256 attributes : total size is 256 ($0100) bytes.
-// nb. Upper nybbles = Material, Lower nybbles = Colour.
 
 * =  ADDR_CHARSET_ATTRIB_DATA "charset_attrib_data"
 charset_attrib_data:
