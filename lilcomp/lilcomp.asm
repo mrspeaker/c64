@@ -290,7 +290,7 @@ wleft:  lsr
     bcc !nover+
     inc b_x_hi
 !nover:
-    inc player_moved
+    dec player_moved
 !:  txa
 wright: lsr
     bcs wfire
@@ -330,7 +330,7 @@ walk_collision:{
     sta TMP4
     jsr get_cell
     and #tile_SOLID
-    bne !collide+
+    bne collide
 
     // Check cell under
     lda b_x_lo
@@ -345,19 +345,33 @@ walk_collision:{
     sta TMP4
     jsr get_cell
     and #tile_SOLID
-    bne !safe+
-    //q !collide+
+    bne safe
+
+fall_off_edge:
+    //clc
+    lda player_moved
+    bpl pos
+    // TODO: proper 16bit add!
+    dec acc_x_hi
+    dec acc_x_hi
+    dec acc_x_hi
+    jmp !+
+pos:
+    inc acc_x_hi
+    inc acc_x_hi
+    inc acc_x_hi
+!:
+
     lda #state_ROLLING
     sta state
-    jmp !done+
 
-!safe:
+safe:
     jsr store_safe_location
-    jmp !done+
+    jmp done
 
-!collide:
+collide:
     jsr reset_to_safe
-!done:
+done:
     rts
 }
 
@@ -704,8 +718,8 @@ safe:
     jmp !done+
 
 collide:
-    jsr reset_to_safe
     jsr reflect_bounce
+    jsr reset_to_safe
 
 !done:
     rts
@@ -815,11 +829,26 @@ reflect_bounce:{
    todo: check collision y, x...
  */
 
+/*
+   Have hit something. Need to determine how to bounce.
+
+   We know the last "safe" cell we were in.
+   We know the current cell we are in (that is solid).
+
+   If both not new: bad state? stuck?
+   If new X and not new Y - reflect off X
+   If new Y and not new X - reflect off Y
+   If both new... hit a corner.... which reflect?
+ */
+    lda #0
+    sta TMP1
+
+refl_x:
     lda CELL_CUR_X
     sec
     sbc last_safe_x_cell
 
-    // == is hit from top/bottom
+    // == is same cell: must have hit from top/bottom
     beq refl_y
 
     // >0 is hit from left
@@ -837,13 +866,16 @@ reflect_bounce:{
     lda #1
     sta bounced_x
 
+    inc TMP1
+
 refl_y:
     lda CELL_CUR_Y
     sec
     sbc last_safe_y_cell
 
-    // == is hit from left/right
-    beq !done+
+    // == is same cell, must have hit from left/right
+    beq done
+
     // >0 is hit from bottom
     // <0 is hit from top
     clc
@@ -857,8 +889,19 @@ refl_y:
     // We bounced Y
     lda #1
     sta bounced_y
+    inc TMP1
 
-!done:
+done:
+    lda TMP1
+    cmp #2
+    bne !+
+both_axis_hit:
+//    dec $d021
+    ldx vel_x_hi
+    ldy vel_y_hi
+//    .break
+//    bit $ea
+!:
     rts
 }
 
