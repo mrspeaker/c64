@@ -343,7 +343,11 @@ walk_collision:{
     sta TMP4
     jsr get_cell
     and #tile_SOLID
-    beq !collide+
+    bne !safe+
+    //q !collide+
+    lda #state_ROLLING
+    sta state
+    jmp !done+
 
 !safe:
     jsr store_safe_location
@@ -729,6 +733,9 @@ set_cell:{
 
     lda TMP3
     sta (TMP1),y
+    //lda charset_attrib_data,y
+    //and #%00001111  // AND out colour
+    //sta $D800+(i * $FF),x
     rts
 }
 
