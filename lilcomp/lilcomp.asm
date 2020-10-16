@@ -14,9 +14,11 @@
         .const SAFE_Y_HI = $ed
         .const CELL_CUR_X = $ee
         .const CELL_CUR_Y = $ef
-
         .const TMP_LO = $e8
         .const TMP_HI = $e9
+        .const TMP3 = $e6
+        .const TMP4 = $e7
+
 
         .const b_x_lo = p_x_lo+3
         .const b_x_hi = p_x_hi+3
@@ -101,8 +103,9 @@ st_rolling:
 
 physics:
     jsr step_physics
-    jsr check_collisions
+    // TODO: switched fric and collis, but it broke walking move.
     jsr apply_friction
+    jsr check_collisions
 
 !done:
     rts
@@ -139,9 +142,9 @@ irq:    {
     //======================
 
     dec $d019
-    inc $d020
+//    inc $d020
     jsr main
-    dec $d020
+//    dec $d020
     pla
     tay
     pla
@@ -281,11 +284,13 @@ wright: lsr
     bcs wfire
     tax
     clc
+    // TODO: make sure walk move is valid.
     lda b_x_lo
     adc #st_walk_SPEED
     sta b_x_lo
     bcc !+
     inc b_x_hi
+
 !:  txa
 wfire:  lsr
     bcs still_walking
@@ -418,6 +423,7 @@ xx:
     /*
        Scale acceleration down... this is so we have a more
        useful "range" of power in a shot.
+
        It would be much faster to do this scaling at the time
        that the force was applied - but there would be more
        accumulated error when more forces are combined.
