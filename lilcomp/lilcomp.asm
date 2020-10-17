@@ -50,6 +50,10 @@
 
         .const tile_EMPTY_ID = 32
 
+        .const scr_LEFT_HIDDEN_AREA = 24
+        .const scr_TOP_HIDDEN_AREA = 50
+        .const scr_RIGHT_EDGE_FROM_MSB = 88
+
 entry:  {
     lda #$0
     sta $d020
@@ -225,7 +229,26 @@ position_sprites:{
     // TODO: account for MSB carry!
     dec $d008
     dec $d008
+    dec $d008
+    dec $d008
     dec $d009
+    dec $d009
+
+    /* move up player (and cursr)
+       TODO: better way to position/collision playre.
+       currently everything is based off top-left pixel.
+     */
+
+
+    dec $d009
+    dec $d009
+    dec $d009
+
+    dec $d007
+    dec $d007
+    dec $d007
+    dec $d007
+    dec $d007
     rts
 }
 
@@ -722,7 +745,7 @@ rot:
 
         //======================
 check_collisions: {
-                    //======================
+    //======================
 
     lda b_x_lo
     sta TMP1
@@ -796,23 +819,33 @@ get_cell:            {
  // Convert pos to X/Y cell locations
     clc
     ldy #0
-    lda TMP1
+    sty out_of_bounds
+    lda TMP1 // X_LO
     asl
-    lda TMP2
+    lda TMP2 // X_HI
     rol
-    bcc !+
-    cmp #80         // right edge of screen (why 80?)
-    bcc !e+
-    dec $d020
-    lda #0
-    jmp !done+
-!e:
-    cmp #24         // left hidden area
-    bcc !+
+    bcc left_edge
+msb_is_set:
+    cmp #scr_RIGHT_EDGE_FROM_MSB
+    bcc not_right_edge
+right_edge:
+    inc out_of_bounds
+    // maybe todo: set out_of_bounds as bitflag for direction.
+    // then can wrap in calling routine
+    jmp has_msb
+not_right_edge:
+    cmp #scr_LEFT_HIDDEN_AREA
+    bcc calc_x_cell
+has_msb:
     ldy #1          // MSB is set
-!:
+    jmp calc_x_cell
+left_edge:
+    cmp #scr_LEFT_HIDDEN_AREA
+    bcs calc_x_cell
+    inc out_of_bounds
+calc_x_cell:
     sec
-    sbc #24         // left hidden area
+    sbc #scr_LEFT_HIDDEN_AREA
     lsr
     lsr
     lsr
@@ -820,24 +853,29 @@ get_cell:            {
     bne !+
     adc #31         // MSB was set: add more tiles
 !:
-    sta TMP1 // save back out for later
+    sta TMP1 // X_CELL: re-set below
     tax
-
 
     // Y
     clc
-    lda TMP3
+    lda TMP3 // Y_LO
     asl
-    lda TMP4
+    lda TMP4 // Y_HI
     rol
     sec
-    sbc #45
+    sbc #scr_TOP_HIDDEN_AREA
+
     lsr
     lsr
     lsr
-    sta TMP2 // save back out for later
+    sta TMP2 // Y_CELL: re-set below
     tay
 
+    lda out_of_bounds
+    beq !+
+    lda #tile_SOLID
+    jmp load
+!:
     lda SCREEN_ROW_LSB,y
     sta TMP3
     lda SCREEN_ROW_MSB,y
@@ -849,9 +887,10 @@ get_cell:            {
     lda (TMP3),y
     tax
     lda charset_attrib_data,x
-    ldx TMP1
-    ldy TMP2
-!done:
+load:
+    ldx TMP1 // X_CELL
+    ldy TMP2 // Y_CELL
+done:
     rts
 }
 
@@ -1051,6 +1090,7 @@ vel_y_hi:.byte $0
 last_safe_x_cell:.byte 0
 last_safe_y_cell: .byte 0
 player_moved:.byte 0
+out_of_bounds:      .byte 0
 
 cursor_angle:.byte -256/4
 st_shoot_power:.byte $00
