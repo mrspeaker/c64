@@ -1078,8 +1078,8 @@ p_x_hi: .byte $2e, $75, $20, $60, $0
 p_y_lo: .byte $00, $00, $00, $00, $0
 p_y_hi: .byte $62, $22, $42, $42, $0
 
-p_x_min:.byte $2d, $29, $11, 0, 0
-p_x_max:.byte $47, $7d, $27, 0, 0
+p_x_min:.byte $2d, $2d, $11, 0, 0
+p_x_max:.byte $47, $7f, $27, 0, 0
 p_sp:   .byte 25,30,20, 0, 0
 
 vel_x_lo:.byte $0
