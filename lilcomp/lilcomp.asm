@@ -37,17 +37,17 @@
         .const state_AIMING = 4
         .const state_ROLLING = 5
 
-        .const phys_MIN_SPEED = 5
+        .const phys_MIN_SPEED_FOR_SLEEP = 5
         .const phys_SLEEP_FRAMES = 10
         .const phys_GRAVITY = 200
         .const phys_AIR_MOVE_SPEED = 40
+        .const phys_MAX_POWER = 65
 
-        .const st_walk_SPEED = 80
+        .const phys_WALK_SPEED = 80
 
         .const tile_SOLID  = %00010000
         .const tile_HOLE   = %00100000
         .const tile_PICKUP = %00110000
-
         .const tile_EMPTY_ID = 32
 
         .const scr_LEFT_HIDDEN_AREA = 24
@@ -120,6 +120,25 @@ physics:
     jsr check_collisions
 
 !done:
+
+
+    lda st_shoot_power
+    ldy #$2f
+    ldx #$3a
+    sec
+!:  iny
+    sbc #100
+    bcs !-
+!:  dex
+    adc #10
+    bmi !-
+    adc #$2f
+
+    sta $442
+    stx $441
+    sty $440
+
+
     rts
 
 }
@@ -306,7 +325,7 @@ wdown:  lsr
 wleft:  lsr
     bcs wright
     tax
-    lda #-st_walk_SPEED
+    lda #-phys_WALK_SPEED
     bpl !pos+
     dec b_x_hi
 !pos:
@@ -320,7 +339,7 @@ wleft:  lsr
 wright: lsr
     bcs wfire
     tax
-    lda #st_walk_SPEED
+    lda #phys_WALK_SPEED
     bpl !pos+
     dec b_x_hi
 !pos:
@@ -409,9 +428,13 @@ take_a_shot:{
     bne did_we_shoot
 
     // add power.
+    lda st_shoot_power
+    cmp #phys_MAX_POWER
+    bcs !+
     inc st_shoot_power
-    dec $d020
+!:
     jmp shot_done
+
 did_we_shoot:
     ldy st_shoot_power
     beq shot_done
@@ -683,7 +706,7 @@ check_sleeping:{
     clc
     eor #$ff
     adc #1
-    cmp #phys_MIN_SPEED
+    cmp #phys_MIN_SPEED_FOR_SLEEP
     bcs !done+
     jmp wait_stop
 
@@ -691,7 +714,7 @@ check_sleeping:{
     // going downwards
     bne still_roll
     lda vel_y_lo
-    cmp #phys_MIN_SPEED
+    cmp #phys_MIN_SPEED_FOR_SLEEP
     bcs !done+
 wait_stop:
     inc sleep_t
@@ -1016,6 +1039,7 @@ update_cursor:{
     tax
     and #%00000100
     bne no_left
+    // todo: accelerate cursor angle.
     dec cursor_angle
 no_left:
     txa
