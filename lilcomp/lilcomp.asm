@@ -12,8 +12,6 @@
         .const SAFE_X_HI = $eb
         .const SAFE_Y_LO = $ec
         .const SAFE_Y_HI = $ed
-        .const CELL_CUR_X = $ee
-        .const CELL_CUR_Y = $ef
 
         .const TMP1 = $e8
         .const TMP2 = $e9
@@ -765,6 +763,14 @@ stop_rolling:{
     lda #state_WALKING
     sta state
 
+is_in_hole:
+    lda cell_cur_value
+    and #%11110000
+    cmp #tile_HOLE
+    bne done
+    // Hole complete!
+    dec $d020
+done:
     rts
 }
 
@@ -810,8 +816,9 @@ check_collisions: {
     sta TMP4
     jsr get_cell
 
-    stx CELL_CUR_X
-    sty CELL_CUR_Y
+    sta cell_cur_value
+    stx cell_cur_x
+    sty cell_cur_y
 
     and #%11110000
     tax
@@ -838,8 +845,8 @@ get_pickup:{
                     // x = cell
                     //y = ycell
     lda #tile_EMPTY_ID
-    ldx CELL_CUR_X
-    ldy CELL_CUR_Y
+    ldx cell_cur_x
+    ldy cell_cur_y
     jsr set_cell
     rts
 }
@@ -968,7 +975,7 @@ reflect_bounce:{
     sta TMP1
 
 refl_x:
-    lda CELL_CUR_X
+    lda cell_cur_x
     sec
     sbc last_safe_x_cell
 
@@ -993,7 +1000,7 @@ refl_x:
     inc TMP1
 
 refl_y:
-    lda CELL_CUR_Y
+    lda cell_cur_y
     sec
     sbc last_safe_y_cell
 
@@ -1042,9 +1049,9 @@ store_safe_location:{
     lda b_y_hi
     sta SAFE_Y_HI
 
-    lda CELL_CUR_X
+    lda cell_cur_x
     sta last_safe_x_cell
-    lda CELL_CUR_Y
+    lda cell_cur_y
     sta last_safe_y_cell
     rts
 }
@@ -1139,6 +1146,11 @@ p_y_hi: .byte $62, $22, $42, $42, $0
 p_x_min:.byte $2d, $2d, $11, 0, 0
 p_x_max:.byte $47, $7f, $27, 0, 0
 p_sp:   .byte 25, 30, -20, 0, 0
+
+cell_cur_value:     .byte 0
+cell_cur_x:         .byte 0
+cell_cur_y:         .byte 0
+
 
 vel_x_lo:.byte $0
 vel_x_hi:.byte $0
