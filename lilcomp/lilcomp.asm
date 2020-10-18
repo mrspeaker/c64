@@ -458,6 +458,7 @@ take_a_shot:{
     cmp #phys_MAX_POWER
     bcs !+
     inc st_shoot_power
+    sta $d02b
 !:
     jmp shot_done
 
@@ -470,8 +471,9 @@ shoot:
     inc stroke
     inc total_strokes
 
-    lda #0
-    sta $d020
+    // reset color
+    lda #1
+    sta $d02b
     jsr reset_physics
 
     ldx cursor_angle
