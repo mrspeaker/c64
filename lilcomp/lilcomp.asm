@@ -4,7 +4,7 @@
         .label ADDR_CHARSET_ATTRIB_DATA   = $2700 // label = 'charset_attrib_data' (size = $0100).
         .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
 
-        .const MAP_FRAME=0*$3e8
+        .const MAP_FRAME = 0*$3e8
         .const NUM_PEEPS = 3
 
         // TODO: these don't need to be zero page
@@ -113,8 +113,6 @@ st_rolling:
 
 physics:
     jsr step_physics
-    // TODO: switched fric and collis, but it broke walking move.
-    // why did I switch them? It fixed SOMETHING...
     jsr apply_friction
     jsr check_collisions
 
@@ -390,7 +388,15 @@ walk_collision:{
     and #tile_SOLID
     bne safe
 
-fall_off_edge:
+at_the_edge:
+/*
+Testing idea:
+
+instead of being stuck on platform, can walk off the edges.
+This make the game more fast/action-y - but will take the
+focus off the shooting part. Need to figure out some levels
+and see if it needs it.
+
     //clc
     lda player_moved
     bpl pos
@@ -404,9 +410,10 @@ pos:
     inc acc_x_hi
     inc acc_x_hi
 !:
-
+*/
     lda #state_ROLLING
     sta state
+    jsr collide
 
 safe:
     jsr store_safe_location
@@ -440,6 +447,8 @@ did_we_shoot:
 
 shoot:
     jsr hide_cursor
+    inc stroke
+    inc total_strokes
 
     lda #0
     sta $d020
@@ -658,6 +667,10 @@ fric_done:
 }
 
 apply_move_force:{
+    // TODO: how to move....
+    // maybe try only move horiz if bounce_y and vel_y is small?
+    rts
+    //
     lda input_state
     and #%00000100
     beq left
@@ -1089,6 +1102,11 @@ muly:
 
 
 state:  .byte state_WALKING
+hole:   .byte 0
+par:    .byte 4
+stroke: .byte 0
+total_strokes:  .word $0000
+
 input_state:.byte 0
 
 p_x_lo: .byte 0, 0, 0, 0, 0
