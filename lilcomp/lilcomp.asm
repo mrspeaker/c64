@@ -80,7 +80,6 @@ main: {
         //======================
 handle_state:{
         //======================
-
     lda state
 
 st_walking:
@@ -487,32 +486,28 @@ update_peeps:{
 
     ldx #NUM_PEEPS-1
 !:
-    // TODO: convert this to signed direction
-    lda p_dir,x
-    beq sub
-    lda p_x_lo,x
-    clc
-    adc p_sp,x
+    lda p_sp,x
+    bpl !pos+
+    dec p_x_hi,x
+!pos:
+    adc p_x_lo,x
     sta p_x_lo,x
+    bcc !nover+
+    inc p_x_hi,x
+!nover:
     lda p_x_hi,x
-    adc #0
-    sta p_x_hi,x
-    cmp p_x_max,x
-    bmi !done+
-    lda #0
-    sta p_dir,x
-sub:
-    lda p_x_lo,x
-    sec
-    sbc p_sp,x
-    sta p_x_lo,x
-    lda p_x_hi,x
-    sbc #0
-    sta p_x_hi,x
     cmp p_x_min,x
-    bpl !done+
-    lda #1
-    sta p_dir,x
+    bmi flip
+    lda p_x_hi,x
+    cmp p_x_max,x
+    bpl flip
+    jmp !done+
+flip:
+    clc
+    lda p_sp,x
+    eor #$ff
+    adc #1
+    sta p_sp,x
 !done:
     dex
     bpl !-
@@ -1096,15 +1091,14 @@ muly:
 state:  .byte state_WALKING
 input_state:.byte 0
 
-p_dir:  .byte 1,1,0,0,0
-p_x_lo: .byte 0,0,0,0,0
+p_x_lo: .byte 0, 0, 0, 0, 0
 p_x_hi: .byte $2e, $75, $20, $60, $0
 p_y_lo: .byte $00, $00, $00, $00, $0
 p_y_hi: .byte $62, $22, $42, $42, $0
 
 p_x_min:.byte $2d, $2d, $11, 0, 0
 p_x_max:.byte $47, $7f, $27, 0, 0
-p_sp:   .byte 25,30,20, 0, 0
+p_sp:   .byte 25, 30, -20, 0, 0
 
 vel_x_lo:.byte $0
 vel_x_hi:.byte $0
@@ -1114,7 +1108,7 @@ vel_y_hi:.byte $0
 last_safe_x_cell:.byte 0
 last_safe_y_cell: .byte 0
 player_moved:.byte 0
-out_of_bounds:      .byte 0
+out_of_bounds:.byte 0
 
 cursor_angle:.byte -256/4
 st_shoot_power:.byte $00
@@ -1143,14 +1137,9 @@ spr_data:
         .fill 15*3, 0
         .byte 0
 
-.byte $15,$00,$00,$59,$40,$00,$62,$40
-.byte $00,$59,$40,$00,$15,$00,$00,$00
-.byte $00,$00,$00,$00,$00,$00,$00,$00
-.byte $00,$00,$00,$00,$00,$00,$00,$00
-.byte $00,$00,$00,$00,$00,$00,$00,$00
-.byte $00,$00,$00,$00,$00,$00,$00,$00
-.byte $00,$00,$00,$00,$00,$00,$00,$00
-.byte $00,$00,$00,$00,$00,$00,$00,$82
+        .byte $15,$00,$00,$59,$40,$00,$62,$40
+        .byte $00,$59,$40,$00,$15,$00,$00,$00
+        .fill 8*6, 0
 
 SCREEN_ROW_LSB:
         .fill 25, <[$0400 + i * 40]
