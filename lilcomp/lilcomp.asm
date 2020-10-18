@@ -74,6 +74,7 @@ main: {
     jsr update_peeps
     jsr position_sprites
     jsr rotate_water
+    jsr update_hud
     rts
 }
 
@@ -118,8 +119,34 @@ physics:
 
 !done:
 
+    rts
+
+}
+
+        //======================
+update_hud:{
+        //======================
 
     lda st_shoot_power
+    jsr byte_to_decimal
+    stx $416
+    sta $417
+
+    lda stroke
+    jsr byte_to_decimal
+    stx $409
+    sta $40a
+
+    lda hole
+    jsr byte_to_decimal
+    stx $421
+    sta $422
+    rts
+}
+
+byte_to_decimal:{
+    //in: a = value
+    //out: a=1s, x=10s, y=100s
     ldy #$2f
     ldx #$3a
     sec
@@ -130,14 +157,7 @@ physics:
     adc #10
     bmi !-
     adc #$2f
-
-    sta $442
-    stx $441
-    sty $440
-
-
     rts
-
 }
 
         //======================
@@ -1101,7 +1121,7 @@ muly:
 }
 
 
-state:  .byte state_WALKING
+state:  .byte state_ROLLING
 hole:   .byte 0
 par:    .byte 4
 stroke: .byte 0
