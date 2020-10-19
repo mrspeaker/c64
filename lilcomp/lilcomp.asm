@@ -735,6 +735,17 @@ muly:
     dey
     bpl mulx
 
+set_color:
+    txa //lda cursor_angle
+    and #%00011111
+    bne !+
+    // 45 degree angle.
+    lda #5
+    jmp done
+!:
+    lda #1
+done:
+    sta $d02b
     rts
 }
 
