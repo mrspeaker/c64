@@ -6,6 +6,7 @@ LEVELS: {
   // Template
   MAP: {
     par: .byte 10
+    num_peeps: .byte 3
     peeps: {
       p_x_lo:.byte 0, 0, 0, 0, 0
       p_x_hi:.byte $2e, $75, $20, 0, 0
@@ -24,6 +25,7 @@ lookup:
 
   Level_001: {
     par: .byte 10
+    num_peeps: .byte 1
     peeps: {
       p_x_lo:.byte 0, 0, 0, 0, 0
       p_x_hi:.byte $2e, 0, 0, 0, 0
@@ -37,6 +39,7 @@ lookup:
 
   Level_002: {
     par: .byte 20
+    num_peeps: .byte 3
     peeps: {
       p_x_lo:.byte 0, 0, 0, 0, 0
       p_x_hi:.byte $2e, $75, $20, 0, 0

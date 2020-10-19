@@ -1,5 +1,10 @@
         BasicUpstart2(entry)
 
+        .const TMP1 = $e8
+        .const TMP2 = $e9
+        .const TMP3 = $e6
+        .const TMP4 = $e7
+
         .label ADDR_CHAR_MAP_DATA         = $1800 // label = 'map_data'            (size = $03e8).
         .label ADDR_CHARSET_ATTRIB_DATA   = $2700 // label = 'charset_attrib_data' (size = $0100).
         .label ADDR_CHARSET_DATA          = $2800 // label = 'charset_data'        (size = $0800).
@@ -12,12 +17,6 @@
         .const SAFE_X_HI = $eb
         .const SAFE_Y_LO = $ec
         .const SAFE_Y_HI = $ed
-
-        .const TMP1 = $e8
-        .const TMP2 = $e9
-        .const TMP3 = $e6
-        .const TMP4 = $e7
-
 
         .const b_x_lo = p_x_lo+3
         .const b_x_hi = p_x_hi+3
@@ -35,22 +34,23 @@
         .const state_AIMING = 4
         .const state_ROLLING = 5
 
-        .const phys_MIN_SPEED_FOR_SLEEP = 5
-        .const phys_SLEEP_FRAMES = 10
-        .const phys_GRAVITY = 200
-        .const phys_AIR_MOVE_SPEED = 40
-        .const phys_MAX_POWER = 65
-
-        .const phys_WALK_SPEED = 80
-
         .const tile_SOLID  = %00010000
         .const tile_HOLE   = %00100000
         .const tile_PICKUP = %00110000
         .const tile_EMPTY_ID = 32
 
+        .const joy_UP    = %00000001
+        .const joy_DOWN  = %00000010
+        .const joy_LEFT  = %00000100
+        .const joy_RIGHT = %00001000
+        .const joy_FIRE  = %00010000
+
         .const scr_LEFT_HIDDEN_AREA = 24
         .const scr_TOP_HIDDEN_AREA = 50
         .const scr_RIGHT_EDGE_FROM_MSB = 88
+
+        #import "player.asm"
+        #import "physics.asm"
 
 entry:  {
     lda #$0
@@ -62,7 +62,7 @@ entry:  {
     jsr init_sprites
     jsr init_irq
 
-//    jsr load_level
+    jsr load_level
 
     jmp *
 }
@@ -87,7 +87,7 @@ handle_state:{
 st_walking:
     cmp #state_WALKING
     bne st_wait_fire
-    jsr walking
+    jsr PLAYER.walking
     jmp !done+
 
 st_wait_fire:
@@ -110,18 +110,16 @@ st_aiming:
 st_rolling:
     cmp #state_ROLLING
     bne physics
-    jsr apply_move_force
-    jsr check_sleeping
+    // jsr PHYSICS.apply_move_force
+    jsr PHYSICS.check_sleeping
 
 physics:
-    jsr step_physics
-    jsr apply_friction
+    jsr PHYSICS.step
+    jsr PHYSICS.apply_friction
     jsr check_collisions
 
 !done:
-
     rts
-
 }
 
         //======================
@@ -326,148 +324,23 @@ draw_screen:{
 }
 
     //======================
-walking: {
-    //======================
-    lda #0
-    sta player_moved
-    lda input_state
-wup:lsr
-//     bcs wdown
-//     tax
-//     sec
-//     lda b_y_lo
-//     sbc #st_walk_SPEED
-//     sta b_y_lo
-//     bcs !+
-//     dec b_y_hi
-// !:  txa
-wdown:  lsr
-//     bcs wleft
-//     tax
-//     clc
-//     lda b_y_lo
-//     adc #st_walk_SPEED
-//     sta b_y_lo
-//     bcc !+
-//     inc b_y_hi
-// !:  txa
-wleft:  lsr
-    bcs wright
-    tax
-    lda #-phys_WALK_SPEED
-    bpl !pos+
-    dec b_x_hi
-!pos:
-    adc b_x_lo
-    sta b_x_lo
-    bcc !nover+
-    inc b_x_hi
-!nover:
-    dec player_moved
-!:  txa
-wright: lsr
-    bcs wfire
-    tax
-    lda #phys_WALK_SPEED
-    bpl !pos+
-    dec b_x_hi
-!pos:
-    adc b_x_lo
-    sta b_x_lo
-    bcc !nover+
-    inc b_x_hi
-!nover:
-    inc player_moved
-!:  txa
-wfire:  lsr
-    bcs still_walking
-    lda #state_WAIT_AIM_FIRE
-    sta state
-still_walking:
-    lda player_moved
-    beq !done+
-    jsr walk_collision
-!done:
-    rts
-}
-
-walk_collision:{
-    // Check cell left/right
-    lda b_x_lo
-    sta TMP1
-    lda b_x_hi
-    sta TMP2
-    lda b_y_lo
-    sta TMP3
-    lda b_y_hi
-    sta TMP4
-    jsr get_cell
-    and #tile_SOLID
-    bne collide
-
-    // Check cell under
-    lda b_x_lo
-    sta TMP1
-    lda b_x_hi
-    sta TMP2
-    lda b_y_lo
-    sta TMP3
-    clc
-    lda b_y_hi
-    adc #1
-    sta TMP4
-    jsr get_cell
-    and #tile_SOLID
-    bne safe
-
-at_the_edge:
-/*
-Testing idea:
-
-instead of being stuck on platform, can walk off the edges.
-This make the game more fast/action-y - but will take the
-focus off the shooting part. Need to figure out some levels
-and see if it needs it.
-
-    //clc
-    lda player_moved
-    bpl pos
-    // TODO: proper 16bit add!
-    dec acc_x_hi
-    dec acc_x_hi
-    dec acc_x_hi
-    jmp !+
-pos:
-    inc acc_x_hi
-    inc acc_x_hi
-    inc acc_x_hi
-!:
-*/
-    lda #state_ROLLING
-    sta state
-    jsr collide
-
-safe:
-    jsr store_safe_location
-    jmp done
-
-collide:
-    jsr reset_to_safe
-done:
-    rts
-}
-
-    //======================
 take_a_shot:{
     //======================
     // Check for fire
     lda input_state
-    and #%00010000
+    tax
+
+    and #joy_DOWN
+    beq go_rolling
+
+    txa
+    and #joy_FIRE
     bne did_we_shoot
+
 
     // add power.
     lda st_shoot_power
-    cmp #phys_MAX_POWER
+    cmp #PHYSICS.MAX_POWER
     bcs !+
     inc st_shoot_power
     sta $d02b
@@ -475,45 +348,43 @@ take_a_shot:{
     jmp shot_done
 
 did_we_shoot:
-    ldy st_shoot_power
+    lda st_shoot_power
     beq shot_done
 
 shoot:
-    jsr hide_cursor
     inc stroke
     inc total_strokes
 
-    // reset color
-    lda #1
-    sta $d02b
-    jsr reset_physics
+    jsr PHYSICS.reset
 
     ldx cursor_angle
     ldy st_shoot_power
 apply:
     lda cos,x
     bpl !pos+
-    dec acc_x_hi
+    dec PHYSICS.acc_x_hi
 !pos:
-    adc acc_x_lo
-    sta acc_x_lo
+    adc PHYSICS.acc_x_lo
+    sta PHYSICS.acc_x_lo
     bcc !nover+
-    inc acc_x_hi
+    inc PHYSICS.acc_x_hi
 !nover:
 
     lda sin,x
     bpl !pos+
-    dec acc_y_hi
+    dec PHYSICS.acc_y_hi
 !pos:
-    adc acc_y_lo
-    sta acc_y_lo
+    adc PHYSICS.acc_y_lo
+    sta PHYSICS.acc_y_lo
     bcc !nover+
-    inc acc_y_hi
+    inc PHYSICS.acc_y_hi
 !nover:
     dey
     bpl apply
 
 go_rolling:
+    jsr hide_cursor
+
     lda #state_ROLLING
     sta state
     lda #0
@@ -557,222 +428,11 @@ flip:
     rts
 }
 
-reset_physics:{
-    lda #0
-    sta acc_x_hi
-    sta acc_x_lo
-    sta acc_y_hi
-    sta acc_y_lo
-    sta vel_y_hi
-    sta vel_y_lo
-    sta vel_x_hi
-    sta vel_x_lo
-    sta bounced_x
-    sta bounced_y
-    rts
-}
-
-        //======================
-step_physics:{
-        //======================
-
-        // Add X acc, and clamp velocity
-xx:
-    lda acc_x_lo
-    sta TMP1
-    lda acc_x_hi
-    sta TMP2
-
-    /*
-       Scale acceleration down... this is so we have a more
-       useful "range" of power in a shot.
-
-       It would be much faster to do this scaling at the time
-       that the force was applied - but there would be more
-       accumulated error when more forces are combined.
-       However, we only have 2: the shot, and gravity.
-       So, TODO: look at the numbers and see if scaling down the
-       shot in `take_a_shot` is the same as adding forces and
-       scaling here.
-     */
-    .for(var i=0;i<4;i++){
-        lda TMP2
-        cmp #$80    //copy sign to c
-        ror TMP2
-        ror TMP1
-    }
-
-    clc
-    lda TMP1
-    adc vel_x_lo
-    sta vel_x_lo
-    lda TMP2
-    adc vel_x_hi
-    sta vel_x_hi
-
-    lda #0          // reset acc
-    sta acc_x_lo
-    sta acc_x_hi
-
-    // update X screen pos
-    clc
-    lda vel_x_lo
-    adc p_x_lo+3
-    sta p_x_lo+3
-    lda vel_x_hi
-    adc p_x_hi+3
-    sta p_x_hi+3
-
-    // Add Y acc, and clamp velocity
-yy:
-    lda acc_y_lo
-    sta TMP1
-    lda acc_y_hi
-    sta TMP2
-
-    // divide acceleartion down
-    .for(var i=0;i<4;i++){
-        lda TMP2
-        cmp #$80    //copy sign to c
-        ror TMP2
-        ror TMP1
-    }
-
-    clc
-    lda TMP1
-    adc vel_y_lo
-    sta vel_y_lo
-    lda TMP2
-    adc vel_y_hi
-    sta vel_y_hi
-
-
-    // Apply gravity, reset acc
-    lda #phys_GRAVITY
-    sta acc_y_lo
-    lda #0
-    sta acc_y_hi
-
-    // update Y screen pos
-    clc
-    lda vel_y_lo
-    adc p_y_lo+3
-    sta p_y_lo+3
-    lda vel_y_hi
-    adc p_y_hi+3
-    sta p_y_hi+3
-
-    rts
-}
-
-        //======================
-apply_friction: {
-        //======================
-
-fric_y:
-    lda bounced_y
-    beq fric_y_done
-    dec bounced_y
-
-    lda vel_y_hi
-    cmp #$80        //copy sign to c
-    ror vel_y_hi
-    ror vel_y_lo
-
-    // testing: decrease x on every y hit
-    lda vel_x_hi
-    cmp #$80
-    ror vel_x_hi
-    ror vel_x_lo
-
-fric_y_done:
-fric_x:
-    lda bounced_x
-    beq fric_done
-    dec bounced_x
-
-    lda vel_x_hi
-    cmp #$80
-    ror vel_x_hi
-    ror vel_x_lo
-
-fric_done:
-    rts
-}
-
-apply_move_force:{
-    // TODO: how to move....
-    // maybe try only move horiz if bounce_y and vel_y is small?
-    rts
-    //
-    lda input_state
-    and #%00000100
-    beq left
-    lda input_state
-    and #%00001000
-    beq right
-    jmp done
-left:
-    sec
-    lda acc_x_lo
-    sbc #phys_AIR_MOVE_SPEED
-    sta acc_x_lo
-    bcs !+
-    dec acc_x_hi
-
-    jmp done
-right:
-    clc
-    lda acc_x_lo
-    adc #phys_AIR_MOVE_SPEED
-    sta acc_x_lo
-    bcc !+
-    inc acc_x_hi
-!:
-done:
-    rts
-}
-
-        //======================
-check_sleeping:{
-        //======================
-
-    // is stopped bouncing?
-    lda vel_y_hi
-    bpl !pos+
-    // Going upwards
-    clc
-    eor #$ff
-    bne still_roll
-    lda vel_y_lo
-    clc
-    eor #$ff
-    adc #1
-    cmp #phys_MIN_SPEED_FOR_SLEEP
-    bcs !done+
-    jmp wait_stop
-
-!pos:
-    // going downwards
-    bne still_roll
-    lda vel_y_lo
-    cmp #phys_MIN_SPEED_FOR_SLEEP
-    bcs !done+
-wait_stop:
-    inc sleep_t
-    lda sleep_t
-    cmp #phys_SLEEP_FRAMES
-    bne !done+
-    jsr stop_rolling
-still_roll:
-    lda #0
-    sta sleep_t
-!done:
-    rts
-}
-
+//======================
 stop_rolling:{
-    jsr reset_physics
+//======================
+
+    jsr PHYSICS.reset
 
     lda #state_WALKING
     sta state
@@ -792,6 +452,9 @@ hide_cursor:{
     lda #0
     sta cursor_x_hi
     sta cursor_y_hi
+    // reset color
+    lda #1
+    sta $d02b
     rts
 }
 
@@ -861,7 +524,7 @@ safe:
     jmp !done+
 
 collide:
-    jsr reflect_bounce
+    jsr PHYSICS.reflect_bounce
     jsr reset_to_safe
 
 !done:
@@ -983,88 +646,6 @@ done:
 }
 
 
-reflect_bounce:{
-/*
-   todo: check collision y, x...
- */
-
-/*
-   Have hit something. Need to determine how to bounce.
-
-   We know the last "safe" cell we were in.
-   We know the current cell we are in (that is solid).
-
-   If both not new: bad state? stuck?
-   If new X and not new Y - reflect off X
-   If new Y and not new X - reflect off Y
-   If both new... hit a corner.... which reflect?
- */
-    lda #0
-    sta TMP1
-
-refl_x:
-    lda cell_cur_x
-    sec
-    sbc last_safe_x_cell
-
-    // == is same cell: must have hit from top/bottom
-    beq refl_y
-
-    // >0 is hit from left
-    // <0 is hit from right
-    clc
-    lda vel_x_lo
-    eor #$ff
-    adc #1
-    sta vel_x_lo
-    lda vel_x_hi
-    eor #$ff
-    adc #0
-    sta vel_x_hi
-
-    lda #1
-    sta bounced_x
-
-    inc TMP1
-
-refl_y:
-    lda cell_cur_y
-    sec
-    sbc last_safe_y_cell
-
-    // == is same cell, must have hit from left/right
-    beq done
-
-    // >0 is hit from bottom
-    // <0 is hit from top
-    clc
-    lda vel_y_lo
-    eor #$ff
-    adc #1
-    sta vel_y_lo
-    lda vel_y_hi
-    eor #$ff
-    sta vel_y_hi
-    // We bounced Y
-    lda #1
-    sta bounced_y
-    inc TMP1
-
-done:
-    lda TMP1
-    cmp #2
-    bne !+
-both_axis_hit:
-//    dec $d021
-    ldx vel_x_hi
-    ldy vel_y_hi
-    // TODO: bug here - bounces of X & Y when should only
-    // bounce off one depending on... velocity?
-//    .break
-//    bit $ea
-!:
-    rts
-}
 
 
 store_safe_location:{
@@ -1179,12 +760,6 @@ cell_cur_value:     .byte 0
 cell_cur_x:         .byte 0
 cell_cur_y:         .byte 0
 
-
-vel_x_lo:.byte $0
-vel_x_hi:.byte $0
-vel_y_lo:.byte $0
-vel_y_hi:.byte $0
-
 last_safe_x_cell:.byte 0
 last_safe_y_cell: .byte 0
 player_moved:.byte 0
@@ -1192,20 +767,22 @@ out_of_bounds:.byte 0
 
 cursor_angle:.byte -256/4
 st_shoot_power:.byte $00
-bounced_x:.byte $0
-bounced_y:.byte $0
           // Timers
 t:      .byte 0
-sleep_t:.byte $0
 tile_anim_counter: .byte 0
+
+// vel_x_lo:.byte $0
+// vel_x_hi:.byte $0
+// vel_y_lo:.byte $0
+// vel_y_hi:.byte $0
+
+// acc_x_hi:.byte $00
+// acc_x_lo:.byte $00
+// acc_y_hi:.byte $00
+// acc_y_lo:.byte $00
 
 cos:    .fill 256, cos(toRadians(360/256*i))*127
 sin:    .fill 256, sin(toRadians(360/256*i))*127
-
-acc_x_hi:.byte $00
-acc_x_lo:.byte $00
-acc_y_hi:.byte $00
-acc_y_lo:.byte $00
 
 spr_data:
         .byte %11000000,%00000000,%00000000
@@ -1226,6 +803,6 @@ SCREEN_ROW_LSB:
 SCREEN_ROW_MSB:
         .fill 25, >[$0400 + i * 40]
 
-//# import "./levels.asm"
+#import "./levels.asm"
 #import "./charset.asm"
 #import "./map.asm"
