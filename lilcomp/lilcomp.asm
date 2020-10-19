@@ -122,6 +122,31 @@ physics:
     rts
 }
 
+sfx:    {
+    //lda #%10110110
+    //sta $d404
+    lda #$08
+    sta $d404
+
+    lda #%00001111
+    sta $d418
+
+    lda #$40
+    sta $d405
+    lda #%00001110
+    sta $d406
+
+    lda #$19
+    sta $d401
+    lda #$b1
+    sta $d400
+
+    lda #$81
+    sta $d404
+    rts
+}
+
+
         //======================
 update_hud:{
         //======================
@@ -267,7 +292,7 @@ position_sprites:{
      // Align cursor (move back/left cursro so center is at x/y)
     lda $d008
     sec
-    sbc #3
+    sbc #4
     sta $d008
     bcs !+
     lda $d010
@@ -359,6 +384,7 @@ did_we_shoot:
     beq shot_done
 
 shoot:
+    jsr sfx
     inc stroke
     inc total_strokes
 
@@ -843,16 +869,6 @@ st_shoot_power:.byte $00
           // Timers
 t:      .byte 0
 tile_anim_counter: .byte 0
-
-// vel_x_lo:.byte $0
-// vel_x_hi:.byte $0
-// vel_y_lo:.byte $0
-// vel_y_hi:.byte $0
-
-// acc_x_hi:.byte $00
-// acc_x_lo:.byte $00
-// acc_y_hi:.byte $00
-// acc_y_lo:.byte $00
 
 cos:    .fill 256, cos(toRadians(360/256*i))*127
 sin:    .fill 256, sin(toRadians(360/256*i))*127
