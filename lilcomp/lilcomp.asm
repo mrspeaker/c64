@@ -126,18 +126,18 @@ physics:
 update_hud:{
         //======================
 
-    lda cursor_angle+1
+    lda stroke
     jsr byte_to_decimal
     sty $415
     stx $416
     sta $417
 
-    lda cursor_angle
+    lda st_shoot_power
     jsr byte_to_decimal
     stx $409
     sta $40a
 
-    lda cursor_sp
+    lda cursor_angle
     jsr byte_to_decimal
 sty $420
     stx $421
@@ -263,12 +263,18 @@ position_sprites:{
         rol
         sta $d001+(i*2)
     }
-    // Align cursor
-    // TODO: account for MSB carry!
-    dec $d008
-    dec $d008
-    dec $d008
-    dec $d008
+
+     // Align cursor (move back/left cursro so center is at x/y)
+    lda $d008
+    sec
+    sbc #3
+    sta $d008
+    bcs !+
+    lda $d010
+    eor #%00010000 // msb
+    sta $d010
+!:
+
     dec $d009
     dec $d009
 
@@ -276,8 +282,6 @@ position_sprites:{
        TODO: better way to position/collision playre.
        currently everything is based off top-left pixel.
      */
-
-
     dec $d009
     dec $d009
     dec $d009
