@@ -126,20 +126,23 @@ physics:
 update_hud:{
         //======================
 
-    lda st_shoot_power
+    lda cursor_angle+1
     jsr byte_to_decimal
+    sty $415
     stx $416
     sta $417
 
-    lda stroke
+    lda cursor_angle
     jsr byte_to_decimal
     stx $409
     sta $40a
 
-    lda hole
+    lda cursor_sp
     jsr byte_to_decimal
+sty $420
     stx $421
     sta $422
+
     rts
 }
 
@@ -680,19 +683,72 @@ reset_to_safe:{
         //======================
 update_cursor:{
         //======================
+    .label moved_cursor = TMP1
+
+    lda #0
+    sta moved_cursor
 
     lda input_state
     tax
-    and #%00000100
-    bne no_left
-    // todo: accelerate cursor angle.
-    dec cursor_angle
-no_left:
+    and #joy_LEFT
+    bne right
+left:
+    inc moved_cursor
+
+    lda cursor_sp
+    bmi !+
+    lda #0
+!:
+    clc
+    adc #-2
+    bmi !+
+    lda #$80 // clamp
+!:
+    sta cursor_sp
+    jmp move_cursor
+
+right:
     txa
-    and #%00001000
-    bne no_right
+    and #joy_RIGHT
+
+    bne no_move
+    inc moved_cursor
+
+    lda cursor_sp
+    bpl !+
+    lda #0
+!:
+    clc
+    adc #2
+    bpl !+
+    lda #$7f // clamp
+!:
+    sta cursor_sp
+
+move_cursor:
+    ldy #5
+apply:
+    clc
+    lda cursor_sp
+    bpl !pos+
+    dec cursor_angle
+!pos:
+    adc cursor_angle+1
+    sta cursor_angle+1
+    bcc !nover+
     inc cursor_angle
-no_right:
+!nover:
+    dey
+    bpl apply
+
+no_move:
+    // Reset cursor speeds
+    lda moved_cursor
+    bne cursor_pos
+    lda #0
+    sta cursor_sp
+    sta cursor_sp+1
+
 
 cursor_pos:
     lda b_x_lo
@@ -776,7 +832,9 @@ last_safe_y_cell: .byte 0
 player_moved:.byte 0
 out_of_bounds:.byte 0
 
-cursor_angle:.byte -256/4
+cursor_angle:.byte -256/4, 0
+cursor_sp:.byte 0, 0
+
 st_shoot_power:.byte $00
           // Timers
 t:      .byte 0
