@@ -123,9 +123,10 @@ physics:
 }
 
 sfx:    {
+
     //lda #%10110110
     //sta $d404
-    lda #$08
+    lda #%00011000
     sta $d404
 
     lda #%00001111
@@ -138,7 +139,7 @@ sfx:    {
 
     lda #$19
     sta $d401
-    lda #$b1
+    lda #$01
     sta $d400
 
     lda #$81
@@ -153,14 +154,14 @@ update_hud:{
 
     lda stroke
     jsr byte_to_decimal
-    sty $415
-    stx $416
-    sta $417
+    stx $409
+    sta $40a
 
     lda st_shoot_power
     jsr byte_to_decimal
-    stx $409
-    sta $40a
+    sty $415
+    stx $416
+    sta $417
 
     lda cursor_angle
     jsr byte_to_decimal
@@ -774,10 +775,15 @@ apply:
 no_move:
     // Reset cursor speeds
     lda moved_cursor
-    bne cursor_pos
+    bne reset_power
     lda #0
     sta cursor_sp
     sta cursor_sp+1
+    jmp cursor_pos
+
+reset_power:
+    lda #0
+    sta st_shoot_power
 
 
 cursor_pos:
