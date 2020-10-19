@@ -61,6 +61,9 @@ entry:  {
     jsr draw_screen
     jsr init_sprites
     jsr init_irq
+
+//    jsr load_level
+
     jmp *
 }
 
@@ -71,7 +74,7 @@ main: {
     jsr handle_state
     jsr update_peeps
     jsr position_sprites
-    jsr rotate_water
+    jsr anim_tiles
     jsr update_hud
     rts
 }
@@ -292,6 +295,17 @@ copy_chars:{
     and #%11110001
     ora #%00001010  // $2800
     sta $d018
+    rts
+}
+
+        //===================
+load_level:{
+    //=================
+    lda hole
+    asl
+    tax
+//    lda LEVELS.lookup, x
+    // TODO: load level yo.
     rts
 }
 
@@ -782,7 +796,7 @@ hide_cursor:{
 }
 
         //======================
-rotate_water: {
+anim_tiles: {
         //======================
     lda tile_anim_counter
     clc
@@ -790,14 +804,28 @@ rotate_water: {
     sta tile_anim_counter
     bcc !+
 
+    // water
     ldy ADDR_CHARSET_DATA+(87*8)+7
-    ldx #7
+    ldx #6
 rot:
     lda ADDR_CHARSET_DATA+(87*8),x
     sta ADDR_CHARSET_DATA+(87*8)+1,x
     dex
     bpl rot
     sty ADDR_CHARSET_DATA+(87*8)
+
+    // air
+    ldy ADDR_CHARSET_DATA+[31*8]
+    ldx #0
+rot2:
+    lda ADDR_CHARSET_DATA+[31*8]+1,x
+    sta ADDR_CHARSET_DATA+[31*8],x
+    inx
+    txa
+    cmp #7
+    bmi rot2
+    sty ADDR_CHARSET_DATA+[31*8]+7
+
 !:
     rts
 }
@@ -1198,5 +1226,6 @@ SCREEN_ROW_LSB:
 SCREEN_ROW_MSB:
         .fill 25, >[$0400 + i * 40]
 
+//# import "./levels.asm"
 #import "./charset.asm"
 #import "./map.asm"
