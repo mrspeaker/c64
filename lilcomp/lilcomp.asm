@@ -491,7 +491,7 @@ stop_rolling:{
     sta state
 
 is_in_hole:
-    lda cell_cur_value
+    lda cell_cur_attr
     and #%11110000
     cmp #tile_HOLE
     bne done
@@ -560,9 +560,12 @@ check_collisions: {
     sta TMP4
     jsr get_cell
 
-    sta cell_cur_value
+    sta cell_cur_attr
     stx cell_cur_x
     sty cell_cur_y
+
+    ldx TMP3
+    stx cell_cur_value
 
     and #%11110000
     tax
@@ -570,17 +573,26 @@ check_collisions: {
     beq collide
     txa
     cmp #tile_PICKUP
+    beq pickup
+
+    lda cell_cur_value
+    cmp #31
     bne safe
+vent:
+    jsr PHYSICS.apply_jetpack
+    jmp safe
+
+pickup:
     jsr get_pickup
 safe:
     jsr store_safe_location
-    jmp !done+
+    jmp done
 
 collide:
     jsr PHYSICS.reflect_bounce
     jsr reset_to_safe
 
-!done:
+done:
     rts
 }
 
@@ -594,7 +606,10 @@ get_pickup:{
     jsr set_cell
     rts
 }
-
+vent:   {
+    jsr PHYSICS.apply_jetpack
+    rts
+}
 set_cell:{
     // in: a==cell value, x=x, y=y
     sta TMP3
@@ -689,6 +704,7 @@ calc_x_cell:
 
     // Check tile attrib
     lda (TMP3),y
+    sta TMP3
     tax
     lda charset_attrib_data,x
 load:
@@ -878,9 +894,10 @@ p_x_min:.byte $2d, $2d, $11, 0, 0
 p_x_max:.byte $47, $7f, $27, 0, 0
 p_sp:   .byte 25, 30, -20, 0, 0
 
-cell_cur_value:     .byte 0
+cell_cur_attr:     .byte 0
 cell_cur_x:         .byte 0
-cell_cur_y:         .byte 0
+cell_cur_y:.byte 0
+cell_cur_value:         .byte 0
 
 last_safe_x_cell:.byte 0
 last_safe_y_cell: .byte 0

@@ -182,16 +182,16 @@ apply_move_force: {
 left:
     sec
     lda acc_x_lo
-    sbc #PHYSICS.AIR_MOVE_SPEED
+    sbc #AIR_MOVE_SPEED
     sta acc_x_lo
     bcs !+
     dec acc_x_hi
-
+!:
     jmp done
 right:
     clc
     lda acc_x_lo
-    adc #PHYSICS.AIR_MOVE_SPEED
+    adc #AIR_MOVE_SPEED
     sta acc_x_lo
     bcc !+
     inc acc_x_hi
@@ -200,6 +200,20 @@ done:
     rts
 }
 
+apply_jetpack:{
+    ldy #5
+lp:
+    sec
+    lda acc_y_lo
+    sbc #$7f
+    sta acc_y_lo
+    bcs !+
+    dec acc_y_hi
+!:
+    dey
+    bpl lp
+    rts
+}
 
 
 //======================
