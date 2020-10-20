@@ -395,10 +395,12 @@ check_collisions: {
     ldx TMP3
     stx cell_cur_value
 
-    and #%11110000
     tax
     cmp #TILES.tile_SOLID
     beq collide
+    txa
+    cmp #TILES.tile_LADDER_TOP
+    beq ladder
     txa
     cmp #TILES.tile_PICKUP
     beq pickup
@@ -416,6 +418,8 @@ safe:
     jsr store_safe_location
     jmp done
 
+ladder:
+    // ladder..
 collide:
     jsr PHYSICS.reflect_bounce
     jsr reset_to_safe

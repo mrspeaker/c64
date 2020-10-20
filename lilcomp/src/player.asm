@@ -2,14 +2,13 @@ PLAYER: {
 
     .const WALK_SPEED = 80
 
-    x_lo: .byte $0
-    x_hi: .byte $0
-    y_lo: .byte $0
-    y_hi: .byte $0
+x_lo:.byte $0
+x_hi:.byte $0
+y_lo:.byte $0
+y_hi:.byte $0
 
-    init: {
+on_ladder:.byte $0
 
-  }
 
       //======================
 walking: {
@@ -23,21 +22,41 @@ wup:lsr
     // on top of ladder?
     // on ladder?
     // in the "middle" of ladder (check low bytes)
-    lda b_x_lo
-    sta TMP1
     // walk downwards.
-    jmp !+
+    lda on_ladder
+    cmp #1
+    bne !+
+    lda #-WALK_SPEED
+    bpl !pos+
+    dec b_y_hi
+!pos:
+    adc b_y_lo
+    sta b_y_lo
+    bcc !nover+
+    inc b_y_hi
+!nover:
 !:  txa
 wdown:  lsr
-//     bcs wleft
-//     tax
-//     clc
-//     lda b_y_lo
-//     adc #st_walk_SPEED
-//     sta b_y_lo
-//     bcc !+
-//     inc b_y_hi
-// !:  txa
+    bcs wleft
+    tax
+// on top of ladder?
+    // on ladder?
+    // in the "middle" of ladder (check low bytes)
+    // walk downwards.
+    lda on_ladder
+    cmp #1
+    bne !+
+    lda #WALK_SPEED
+    bpl !pos+
+    dec b_y_hi
+!pos:
+    adc b_y_lo
+    sta b_y_lo
+    bcc !nover+
+    inc b_y_hi
+!nover:
+
+!:  txa
 wleft:  lsr
     bcs wright
     tax
@@ -79,6 +98,9 @@ still_walking:
 }
 
 walk_collision:{
+    lda #0
+    sta on_ladder
+
     // Check cell left/right
     lda b_x_lo
     sta TMP1
@@ -89,9 +111,13 @@ walk_collision:{
     lda b_y_hi
     sta TMP4
     jsr MAP.get_cell
-    and #TILES.tile_SOLID
-    bne collide
-
+    tax
+    cmp #TILES.tile_SOLID
+    beq collide
+    txa
+    cmp #TILES.tile_LADDER_TOP
+    beq collide
+feet:
     // Check cell under
     lda b_x_lo
     sta TMP1
@@ -104,8 +130,16 @@ walk_collision:{
     adc #1
     sta TMP4
     jsr MAP.get_cell
-    and #TILES.tile_SOLID
-    bne safe
+    tax
+    cmp #TILES.tile_SOLID
+    beq safe
+    txa
+    cmp #TILES.tile_LADDER_TOP
+    bne !+
+    lda #1
+    sta on_ladder
+    jmp safe
+!:
 
 at_the_edge:
 /*
@@ -129,10 +163,12 @@ pos:
     inc acc_x_hi
     inc acc_x_hi
 !:
-*/
-    lda #state_ROLLING
-    sta state
-    jsr collide
+ */
+
+//    lda #state_ROLLING
+//    sta state
+//    jsr PHYSICS.reset
+    jmp collide
 
 safe:
     jsr store_safe_location

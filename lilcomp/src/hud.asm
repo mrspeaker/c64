@@ -12,7 +12,7 @@ update:{
     stx $416
     sta $417
 
-    lda b_x_lo
+    lda PLAYER.on_ladder
     jsr UTILS.byte_to_decimal
     sty $420
     stx $421

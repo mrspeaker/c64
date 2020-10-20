@@ -3,6 +3,9 @@ TILES:  {
     .label tile_SOLID  = %00010000
     .label tile_HOLE   = %00100000
     .label tile_PICKUP = %00110000
+    .label tile_LADDER = %01000000
+    .label tile_LADDER_TOP = %01010000
+
     .label tile_EMPTY_ID = 32
 
 tile_anim_counter:.byte 0

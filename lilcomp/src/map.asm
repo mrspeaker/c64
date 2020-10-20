@@ -29,7 +29,7 @@ copy_chars:{
 
 get_cell:            {
 
-    // out: a == cell value
+    // out: a == cell attributes
     //      x == x cell
     //      y == y cell
 
@@ -105,6 +105,7 @@ calc_x_cell:
     sta TMP3
     tax
     lda charset_attrib_data,x
+    and #%11110000
 load:
     ldx TMP1 // X_CELL
     ldy TMP2 // Y_CELL
