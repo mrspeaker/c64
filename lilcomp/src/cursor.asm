@@ -1,9 +1,13 @@
 CURSOR: {
 
+        .const cursor_x_lo = p_x_lo+4
+        .const cursor_x_hi = p_x_hi+4
+        .const cursor_y_lo = p_y_lo+4
+        .const cursor_y_hi = p_y_hi+4
+        .const cursor_DISTANCE = 10
+
 angle:.byte -256/4, 0
 speed:.byte 0, 0
-
-
 
 hide:{
     lda #0
@@ -87,7 +91,7 @@ no_move:
 
 reset_power:
     lda #0
-    sta st_shoot_power
+    sta shoot_power
 
 
 cursor_pos:

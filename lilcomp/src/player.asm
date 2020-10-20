@@ -89,7 +89,7 @@ walk_collision:{
     lda b_y_hi
     sta TMP4
     jsr MAP.get_cell
-    and #tile_SOLID
+    and #TILES.tile_SOLID
     bne collide
 
     // Check cell under
@@ -104,7 +104,7 @@ walk_collision:{
     adc #1
     sta TMP4
     jsr MAP.get_cell
-    and #tile_SOLID
+    and #TILES.tile_SOLID
     bne safe
 
 at_the_edge:

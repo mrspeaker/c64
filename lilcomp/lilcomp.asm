@@ -22,22 +22,12 @@
         .const b_x_hi = p_x_hi+3
         .const b_y_lo = p_y_lo+3
         .const b_y_hi = p_y_hi+3
-        .const cursor_x_lo = p_x_lo+4
-        .const cursor_x_hi = p_x_hi+4
-        .const cursor_y_lo = p_y_lo+4
-        .const cursor_y_hi = p_y_hi+4
-        .const cursor_DISTANCE = 10
 
         .const state_INIT = 1
         .const state_WALKING = 2
         .const state_WAIT_AIM_FIRE = 3
         .const state_AIMING = 4
         .const state_ROLLING = 5
-
-        .const tile_SOLID  = %00010000
-        .const tile_HOLE   = %00100000
-        .const tile_PICKUP = %00110000
-        .const tile_EMPTY_ID = 32
 
         .const joy_UP    = %00000001
         .const joy_DOWN  = %00000010
@@ -51,8 +41,12 @@
 
         #import "src/player.asm"
         #import "src/cursor.asm"
+        #import "src/peeps.asm"
         #import "src/physics.asm"
+        #import "src/tiles.asm"
         #import "src/map.asm"
+        #import "src/sound.asm"
+        #import "src/hud.asm"
         #import "src/utils.asm"
 
 entry:  {
@@ -75,10 +69,10 @@ main: {
         //======================
     jsr get_input
     jsr handle_state
-    jsr update_peeps
+    jsr PEEPS.update
     jsr position_sprites
-    jsr anim_tiles
-    jsr update_hud
+    jsr TILES.animate
+    jsr HUD.update
     rts
 }
 
@@ -122,55 +116,6 @@ physics:
     jsr check_collisions
 
 !done:
-    rts
-}
-
-sfx:    {
-
-    //lda #%10110110
-    lda #%00011000
-    sta $d404
-
-    lda #%00001111
-    sta $d418
-
-    lda #$40
-    sta $d405
-    lda #%00001110
-    sta $d406
-
-    lda #$19
-    sta $d401
-    lda #$01
-    sta $d400
-
-    lda #$81
-    sta $d404
-    rts
-}
-
-
-        //======================
-update_hud:{
-        //======================
-
-    lda stroke
-    jsr UTILS.byte_to_decimal
-    stx $409
-    sta $40a
-
-    lda st_shoot_power
-    jsr UTILS.byte_to_decimal
-    sty $415
-    stx $416
-    sta $417
-
-    lda b_x_lo
-    jsr UTILS.byte_to_decimal
-    sty $420
-    stx $421
-    sta $422
-
     rts
 }
 
@@ -353,27 +298,27 @@ take_a_shot:{
 
 
     // add power.
-    lda st_shoot_power
+    lda shoot_power
     cmp #PHYSICS.MAX_POWER
     bcs !+
-    inc st_shoot_power
+    inc shoot_power
     sta $d02b
 !:
     jmp shot_done
 
 did_we_shoot:
-    lda st_shoot_power
+    lda shoot_power
     beq shot_done
 
 shoot:
-    jsr sfx
+    jsr SOUND.sfx
     inc stroke
     inc total_strokes
 
     jsr PHYSICS.reset
 
     ldx CURSOR.angle
-    ldy st_shoot_power
+    ldy shoot_power
 apply:
     lda cos,x
     bpl !pos+
@@ -403,43 +348,9 @@ go_rolling:
     lda #state_ROLLING
     sta state
     lda #0
-    sta st_shoot_power
+    sta shoot_power
 
 shot_done:
-    rts
-}
-
-        //======================
-update_peeps:{
-        //======================
-
-    ldx #NUM_PEEPS-1
-!:
-    lda p_sp,x
-    bpl !pos+
-    dec p_x_hi,x
-!pos:
-    adc p_x_lo,x
-    sta p_x_lo,x
-    bcc !nover+
-    inc p_x_hi,x
-!nover:
-    lda p_x_hi,x
-    cmp p_x_min,x
-    bmi flip
-    lda p_x_hi,x
-    cmp p_x_max,x
-    bpl flip
-    jmp !done+
-flip:
-    clc
-    lda p_sp,x
-    eor #$ff
-    adc #1
-    sta p_sp,x
-!done:
-    dex
-    bpl !-
     rts
 }
 
@@ -455,46 +366,11 @@ stop_rolling:{
 is_in_hole:
     lda cell_cur_attr
     and #%11110000
-    cmp #tile_HOLE
+    cmp #TILES.tile_HOLE
     bne done
     // Hole complete!
     jsr load_level
 done:
-    rts
-}
-
-        //======================
-anim_tiles: {
-        //======================
-    lda tile_anim_counter
-    clc
-    adc #40
-    sta tile_anim_counter
-    bcc !+
-
-    // water
-    ldy ADDR_CHARSET_DATA+(87*8)+7
-    ldx #6
-rot:
-    lda ADDR_CHARSET_DATA+(87*8),x
-    sta ADDR_CHARSET_DATA+(87*8)+1,x
-    dex
-    bpl rot
-    sty ADDR_CHARSET_DATA+(87*8)
-
-    // air
-    ldy ADDR_CHARSET_DATA+[31*8]
-    ldx #0
-rot2:
-    lda ADDR_CHARSET_DATA+[31*8]+1,x
-    sta ADDR_CHARSET_DATA+[31*8],x
-    inx
-    txa
-    cmp #7
-    bmi rot2
-    sty ADDR_CHARSET_DATA+[31*8]+7
-
-!:
     rts
 }
 
@@ -521,10 +397,10 @@ check_collisions: {
 
     and #%11110000
     tax
-    cmp #tile_SOLID
+    cmp #TILES.tile_SOLID
     beq collide
     txa
-    cmp #tile_PICKUP
+    cmp #TILES.tile_PICKUP
     beq pickup
 
     lda cell_cur_value
@@ -549,41 +425,20 @@ done:
 }
 
 get_pickup:{
-                    // in a = cell value
-                    // x = cell
-                    //y = ycell
-    lda #tile_EMPTY_ID
+    // in a = cell value
+    // x = cell
+    //y = ycell
+    lda #TILES.tile_EMPTY_ID
     ldx cell_cur_x
     ldy cell_cur_y
-    jsr set_cell
+    jsr MAP.set_cell
     rts
 }
+
 vent:   {
     jsr PHYSICS.apply_jetpack
     rts
 }
-set_cell:{
-    // in: a==cell value, x=x, y=y
-    sta TMP3
-    lda SCREEN_ROW_LSB,y
-    sta TMP1
-    lda SCREEN_ROW_MSB,y
-    sta TMP2
-
-    txa
-    tay
-
-    lda TMP3
-    sta (TMP1),y
-    //lda charset_attrib_data,y
-    //and #%00001111  // AND out colour
-    //sta $D800+(i * $FF),x
-    rts
-}
-
-
-
-
 
 store_safe_location:{
     lda b_x_lo
@@ -642,10 +497,7 @@ last_safe_y_cell: .byte 0
 player_moved:.byte 0
 out_of_bounds:.byte 0
 
-st_shoot_power:.byte $00
-          // Timers
-t:      .byte 0
-tile_anim_counter: .byte 0
+shoot_power:.byte $00
 
 cos:    .fill 256, cos(toRadians(360/256*i))*127
 sin:    .fill 256, sin(toRadians(360/256*i))*127

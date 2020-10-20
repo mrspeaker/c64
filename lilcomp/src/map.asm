@@ -90,7 +90,7 @@ calc_x_cell:
 
     lda out_of_bounds
     beq !+
-    lda #tile_SOLID
+    lda #TILES.tile_SOLID
     jmp load
 !:
     lda SCREEN_ROW_LSB,y
@@ -112,5 +112,23 @@ done:
     rts
 }
 
+set_cell:{
+    // in: a==cell value, x=x, y=y
+    sta TMP3
+    lda SCREEN_ROW_LSB,y
+    sta TMP1
+    lda SCREEN_ROW_MSB,y
+    sta TMP2
+
+    txa
+    tay
+
+    lda TMP3
+    sta (TMP1),y
+    //lda charset_attrib_data,y
+    //and #%00001111  // AND out colour
+    //sta $D800+(i * $FF),x
+    rts
+}
 
 }
