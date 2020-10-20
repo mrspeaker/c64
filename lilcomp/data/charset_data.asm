@@ -1,6 +1,4 @@
 
-// CHAR SET DATA : 256 (8 byte) chars : total size is 2048 ($0800) bytes.
-
 * =  ADDR_CHARSET_DATA "charset_data"
 charset_data:
 

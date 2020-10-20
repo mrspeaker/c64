@@ -7,8 +7,6 @@ x_hi:       .byte $0
 y_lo:       .byte $0
 y_hi:       .byte $0
 
-on_ladder:  .byte $0
-
     //======================
 walking:    {
             lda #0
@@ -16,45 +14,8 @@ walking:    {
             lda input_state
 wup:        lsr
             bcs wdown
-            tax
-                    // on top of ladder?
-                    // on ladder?
-    // in the "middle" of ladder (check low bytes)
-    // walk downwards.
-            lda on_ladder
-            cmp #1
-            bne !+
-            lda #-WALK_SPEED
-            bpl !pos+
-            dec b_y_hi
-!pos:
-            adc b_y_lo
-            sta b_y_lo
-            bcc !nover+
-            inc b_y_hi
-!nover:
-!:          txa
 wdown:      lsr
             bcs wleft
-            tax
-    // on top of ladder?
-    // on ladder?
-    // in the "middle" of ladder (check low bytes)
-    // walk downwards.
-            lda on_ladder
-            cmp #1
-            bne !+
-            lda #WALK_SPEED
-            bpl !pos+
-            dec b_y_hi
-!pos:
-            adc b_y_lo
-            sta b_y_lo
-            bcc !nover+
-            inc b_y_hi
-!nover:
-
-!:          txa
 wleft:      lsr
             bcs wright
             tax
@@ -97,8 +58,6 @@ still_walking:
 
     //=============================
 walk_collision:{
-            lda #0
-            sta on_ladder
 
     // Check cell left/right
             lda b_x_lo
@@ -113,9 +72,7 @@ walk_collision:{
             tax
             cmp #TILES.tile_SOLID
             beq collide
-            txa
-            cmp #TILES.tile_LADDER_TOP
-            beq collide
+
 feet:
     // Check cell under
             lda b_x_lo
@@ -133,12 +90,6 @@ feet:
             cmp #TILES.tile_SOLID
             beq safe
             txa
-            cmp #TILES.tile_LADDER_TOP
-            bne !+
-            lda #1
-            sta on_ladder
-            jmp safe
-!:
 
 at_the_edge:
 /*
