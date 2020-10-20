@@ -16,6 +16,12 @@ LEVELS: {
       p_x_max:.byte $47, $7f, $27, 0, 0
       p_sp:.byte 25, 30, -20, 0, 0
     }
+    player: {
+spawn_x_lo:  .byte 0
+spawn_x_hi:  .byte $56
+spawn_y_lo:  .byte 0
+spawn_y_hi:  .byte $3e
+    }
   }
 
 

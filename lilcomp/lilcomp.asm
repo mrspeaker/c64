@@ -322,6 +322,7 @@ position_sprites:{
 
 copy_chars:{
     // note: was copy, now just point at $2800
+    // --- means level can't be reloaded! Do copy yo.
     lda $d018
     and #%11110001
     ora #%00001010  // $2800
@@ -337,6 +338,24 @@ load_level:{
     tax
 //    lda LEVELS.lookup, x
     // TODO: load level yo.
+
+    lda LEVELS.MAP.player.spawn_x_lo
+    sta b_x_lo
+    lda LEVELS.MAP.player.spawn_x_hi
+    sta b_x_hi
+    lda LEVELS.MAP.player.spawn_y_lo
+    sta b_y_lo
+    lda LEVELS.MAP.player.spawn_y_hi
+    sta b_y_hi
+
+    jsr PHYSICS.reset
+
+    lda #0
+    sta stroke
+
+    lda #state_ROLLING
+    sta state
+
     rts
 }
 
@@ -477,7 +496,7 @@ is_in_hole:
     cmp #tile_HOLE
     bne done
     // Hole complete!
-    dec $d020
+    jsr load_level
 done:
     rts
 }
@@ -851,9 +870,9 @@ total_strokes:  .word $0000
 input_state:.byte 0
 
 p_x_lo: .byte 0, 0, 0, 0, 0
-p_x_hi: .byte $2e, $75, $20, $60, $0
-p_y_lo: .byte $00, $00, $00, $00, $0
-p_y_hi: .byte $62, $22, $42, $42, $0
+p_x_hi: .byte $2e, $75, $20, 0, 0
+p_y_lo: .byte $00, $00, $00, 0, 0
+p_y_hi: .byte $62, $22, $42, 0, 0
 
 p_x_min:.byte $2d, $2d, $11, 0, 0
 p_x_max:.byte $47, $7f, $27, 0, 0
