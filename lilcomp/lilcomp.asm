@@ -173,7 +173,7 @@ get_input: {
 init_sprites:{
         //======================
 
-    lda #%00011111
+    lda #%00011000
     sta $d015
     sta $d01c
 
