@@ -18,15 +18,16 @@ walking: {
     sta player_moved
     lda input_state
 wup:lsr
-//     bcs wdown
-//     tax
-//     sec
-//     lda b_y_lo
-//     sbc #st_walk_SPEED
-//     sta b_y_lo
-//     bcs !+
-//     dec b_y_hi
-// !:  txa
+    bcs wdown
+    tax
+    // on top of ladder?
+    // on ladder?
+    // in the "middle" of ladder (check low bytes)
+    lda b_x_lo
+    sta TMP1
+    // walk downwards.
+    jmp !+
+!:  txa
 wdown:  lsr
 //     bcs wleft
 //     tax
@@ -87,7 +88,7 @@ walk_collision:{
     sta TMP3
     lda b_y_hi
     sta TMP4
-    jsr get_cell
+    jsr MAP.get_cell
     and #tile_SOLID
     bne collide
 
@@ -102,7 +103,7 @@ walk_collision:{
     lda b_y_hi
     adc #1
     sta TMP4
-    jsr get_cell
+    jsr MAP.get_cell
     and #tile_SOLID
     bne safe
 

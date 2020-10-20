@@ -49,16 +49,19 @@
         .const scr_TOP_HIDDEN_AREA = 50
         .const scr_RIGHT_EDGE_FROM_MSB = 88
 
-        #import "player.asm"
-        #import "physics.asm"
+        #import "src/player.asm"
+        #import "src/cursor.asm"
+        #import "src/physics.asm"
+        #import "src/map.asm"
+        #import "src/utils.asm"
 
 entry:  {
     lda #$0
     sta $d020
     sta $d021
 
-    jsr copy_chars
-    jsr draw_screen
+    jsr MAP.copy_chars
+    jsr MAP.draw_screen
     jsr init_sprites
     jsr init_irq
 
@@ -103,7 +106,7 @@ st_wait_fire:
 st_aiming:
     cmp #state_AIMING
     bne st_rolling
-    jsr update_cursor
+    jsr CURSOR.update
     jsr take_a_shot
     jmp physics
 
@@ -125,7 +128,6 @@ physics:
 sfx:    {
 
     //lda #%10110110
-    //sta $d404
     lda #%00011000
     sta $d404
 
@@ -153,40 +155,25 @@ update_hud:{
         //======================
 
     lda stroke
-    jsr byte_to_decimal
+    jsr UTILS.byte_to_decimal
     stx $409
     sta $40a
 
     lda st_shoot_power
-    jsr byte_to_decimal
+    jsr UTILS.byte_to_decimal
     sty $415
     stx $416
     sta $417
 
-    lda cursor_angle
-    jsr byte_to_decimal
-sty $420
+    lda b_x_lo
+    jsr UTILS.byte_to_decimal
+    sty $420
     stx $421
     sta $422
 
     rts
 }
 
-byte_to_decimal:{
-    //in: a = value
-    //out: a=1s, x=10s, y=100s
-    ldy #$2f
-    ldx #$3a
-    sec
-!:  iny
-    sbc #100
-    bcs !-
-!:  dex
-    adc #10
-    bmi !-
-    adc #$2f
-    rts
-}
 
         //======================
 init_irq:{
@@ -320,16 +307,6 @@ position_sprites:{
     rts
 }
 
-copy_chars:{
-    // note: was copy, now just point at $2800
-    // --- means level can't be reloaded! Do copy yo.
-    lda $d018
-    and #%11110001
-    ora #%00001010  // $2800
-    sta $d018
-    rts
-}
-
         //===================
 load_level:{
     //=================
@@ -359,21 +336,6 @@ load_level:{
     rts
 }
 
-draw_screen:{
-    ldx #0
-!:
-    .for (var i=0; i<4;i++) {
-        lda map_data+MAP_FRAME+(i * $FF),x
-        sta $400+(i*$FF),x
-        tay
-        lda charset_attrib_data,y
-        and #%00001111 // AND out colour
-        sta $D800+(i * $FF),x
-    }
-    inx
-    bne !-
-    rts
-}
 
     //======================
 take_a_shot:{
@@ -410,7 +372,7 @@ shoot:
 
     jsr PHYSICS.reset
 
-    ldx cursor_angle
+    ldx CURSOR.angle
     ldy st_shoot_power
 apply:
     lda cos,x
@@ -436,7 +398,7 @@ apply:
     bpl apply
 
 go_rolling:
-    jsr hide_cursor
+    jsr CURSOR.hide
 
     lda #state_ROLLING
     sta state
@@ -501,16 +463,6 @@ done:
     rts
 }
 
-hide_cursor:{
-    lda #0
-    sta cursor_x_hi
-    sta cursor_y_hi
-    // reset color
-    lda #1
-    sta $d02b
-    rts
-}
-
         //======================
 anim_tiles: {
         //======================
@@ -558,7 +510,7 @@ check_collisions: {
     sta TMP3
     lda b_y_hi
     sta TMP4
-    jsr get_cell
+    jsr MAP.get_cell
 
     sta cell_cur_attr
     stx cell_cur_x
@@ -629,90 +581,6 @@ set_cell:{
     rts
 }
 
-get_cell:            {
-    //in: tmp0-4 x_lo,x_hi,y_lo,y_hi
-    // out: a == cell value
-    //      x == x cell
-    //      y == y cell
-
- // Convert pos to X/Y cell locations
-    clc
-    ldy #0
-    sty out_of_bounds
-    lda TMP1 // X_LO
-    asl
-    lda TMP2 // X_HI
-    rol
-    bcc left_edge
-msb_is_set:
-    cmp #scr_RIGHT_EDGE_FROM_MSB
-    bcc not_right_edge
-right_edge:
-    inc out_of_bounds
-    // maybe todo: set out_of_bounds as bitflag for direction.
-    // then can wrap in calling routine
-    jmp has_msb
-not_right_edge:
-    cmp #scr_LEFT_HIDDEN_AREA
-    bcc calc_x_cell
-has_msb:
-    ldy #1          // MSB is set
-    jmp calc_x_cell
-left_edge:
-    cmp #scr_LEFT_HIDDEN_AREA
-    bcs calc_x_cell
-    inc out_of_bounds
-calc_x_cell:
-    sec
-    sbc #scr_LEFT_HIDDEN_AREA
-    lsr
-    lsr
-    lsr
-    cpy #1          // MSB was set?
-    bne !+
-    adc #31         // MSB was set: add more tiles
-!:
-    sta TMP1 // X_CELL: re-set below
-    tax
-
-    // Y
-    clc
-    lda TMP3 // Y_LO
-    asl
-    lda TMP4 // Y_HI
-    rol
-    sec
-    sbc #scr_TOP_HIDDEN_AREA
-
-    lsr
-    lsr
-    lsr
-    sta TMP2 // Y_CELL: re-set below
-    tay
-
-    lda out_of_bounds
-    beq !+
-    lda #tile_SOLID
-    jmp load
-!:
-    lda SCREEN_ROW_LSB,y
-    sta TMP3
-    lda SCREEN_ROW_MSB,y
-    sta TMP4
-    txa
-    tay
-
-    // Check tile attrib
-    lda (TMP3),y
-    sta TMP3
-    tax
-    lda charset_attrib_data,x
-load:
-    ldx TMP1 // X_CELL
-    ldy TMP2 // Y_CELL
-done:
-    rts
-}
 
 
 
@@ -746,136 +614,6 @@ reset_to_safe:{
     rts
 }
 
-        //======================
-update_cursor:{
-        //======================
-    .label moved_cursor = TMP1
-
-    lda #0
-    sta moved_cursor
-
-    lda input_state
-    tax
-    and #joy_LEFT
-    bne right
-left:
-    inc moved_cursor
-
-    lda cursor_sp
-    bmi !+
-    lda #0
-!:
-    clc
-    adc #-2
-    bmi !+
-    lda #$80 // clamp
-!:
-    sta cursor_sp
-    jmp move_cursor
-
-right:
-    txa
-    and #joy_RIGHT
-
-    bne no_move
-    inc moved_cursor
-
-    lda cursor_sp
-    bpl !+
-    lda #0
-!:
-    clc
-    adc #2
-    bpl !+
-    lda #$7f // clamp
-!:
-    sta cursor_sp
-
-move_cursor:
-    ldy #5
-apply:
-    clc
-    lda cursor_sp
-    bpl !pos+
-    dec cursor_angle
-!pos:
-    adc cursor_angle+1
-    sta cursor_angle+1
-    bcc !nover+
-    inc cursor_angle
-!nover:
-    dey
-    bpl apply
-
-no_move:
-    // Reset cursor speeds
-    lda moved_cursor
-    bne reset_power
-    lda #0
-    sta cursor_sp
-    sta cursor_sp+1
-    jmp cursor_pos
-
-reset_power:
-    lda #0
-    sta st_shoot_power
-
-
-cursor_pos:
-    lda b_x_lo
-    sta cursor_x_lo
-    lda b_x_hi
-    sta cursor_x_hi
-
-    lda b_y_lo
-    sta cursor_y_lo
-    lda b_y_hi
-    and #%01111111
-    sta cursor_y_hi
-
-move_angle:
-    ldx cursor_angle
-    ldy #cursor_DISTANCE
-mulx:
-    clc
-    lda cos,x
-    bpl !pos+
-    dec cursor_x_hi
-!pos:
-    adc cursor_x_lo
-    sta cursor_x_lo
-    bcc !nover+
-    inc cursor_x_hi
-!nover:
-
-muly:
-    clc
-    lda sin,x
-    bpl !pos+
-    dec cursor_y_hi
-!pos:
-    adc cursor_y_lo
-    sta cursor_y_lo
-    bcc !nover+
-    inc cursor_y_hi
-!nover:
-    dey
-    bpl mulx
-
-set_color:
-    txa //lda cursor_angle
-    and #%00011111
-    bne !+
-    // 45 degree angle.
-    lda #5
-    jmp done
-!:
-    lda #1
-done:
-    sta $d02b
-    rts
-}
-
 
 state:  .byte state_ROLLING
 hole:   .byte 0
@@ -904,9 +642,6 @@ last_safe_y_cell: .byte 0
 player_moved:.byte 0
 out_of_bounds:.byte 0
 
-cursor_angle:.byte -256/4, 0
-cursor_sp:.byte 0, 0
-
 st_shoot_power:.byte $00
           // Timers
 t:      .byte 0
@@ -934,6 +669,6 @@ SCREEN_ROW_LSB:
 SCREEN_ROW_MSB:
         .fill 25, >[$0400 + i * 40]
 
-#import "./levels.asm"
-#import "./charset.asm"
-#import "./map.asm"
+#import "data/levels_data.asm"
+#import "data/charset_data.asm"
+#import "data/map_data.asm"
