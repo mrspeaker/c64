@@ -28,6 +28,7 @@ copy_chars: {
 
 
 get_cell:   {
+    // in: tmp1 == x_lo, tmp2 == x_hi, tmp3 == y_lo, tmp4==y_hi
 
     // out: a == cell attributes
     //      x == x cell
@@ -111,7 +112,27 @@ load:
             ldy TMP2 // Y_CELL
 done:
             rts
+  }
+
+get_cell_i:   {
+    // in: x == x_cell, y == y_cell
+    // out: a == cell attributes
+            lda SCREEN_ROW_LSB,y
+            sta TMP1
+            lda SCREEN_ROW_MSB,y
+            sta TMP2
+            txa
+            tay
+
+    // Check tile attrib
+            lda (TMP1),y
+            tax
+            lda charset_attrib_data,x
+            and #%11110000
+done:
+            rts
 }
+
 
 set_cell:   {
     // in: a==cell value, x=x, y=y
