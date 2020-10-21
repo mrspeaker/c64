@@ -1,3 +1,4 @@
+
 // CHAR SET DATA : 256 (8 byte) chars : total size is 2048 ($0800) bytes.
 
 * =  ADDR_CHARSET_DATA "charset_data"
@@ -41,7 +42,7 @@ charset_data:
 .byte $4b,$f7,$ef,$55,$00,$00,$00,$00,$30,$30,$30,$30,$30,$30,$30,$30
 .byte $00,$00,$00,$00,$00,$00,$7e,$ff,$fc,$72,$fd,$ff,$ff,$ff,$f7,$be
 .byte $3f,$63,$ff,$c7,$ff,$e3,$ff,$47,$fc,$c6,$ff,$e3,$ff,$c7,$ff,$e2
-.byte $c0,$c0,$c0,$c0,$c0,$c0,$ff,$ff,$5f,$af,$df,$af,$df,$af,$5f,$be
+.byte $c0,$c0,$c0,$c0,$c0,$c0,$ff,$ff,$fb,$f5,$eb,$d7,$af,$5f,$be,$ff
 .byte $ff,$d6,$3f,$ff,$ff,$ff,$f7,$de,$ff,$ff,$c0,$c0,$c0,$c0,$c0,$c0
 .byte $ff,$ff,$03,$03,$03,$03,$03,$03,$ff,$de,$3f,$ff,$ff,$ff,$f7,$de
 .byte $00,$00,$00,$00,$00,$00,$00,$fe,$36,$7f,$7f,$7f,$3e,$1c,$08,$00
@@ -139,9 +140,9 @@ charset_data:
 * =  ADDR_CHARSET_ATTRIB_DATA "charset_attrib_data"
 charset_attrib_data:
 
-.byte $01,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c
+.byte $02,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c
 .byte $0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$08,$01,$01,$01,$06
-.byte $05,$0c,$15,$0b,$06,$01,$01,$01,$37,$01,$0c,$0c,$0c,$0c,$0c,$0c
+.byte $05,$0c,$15,$0b,$06,$01,$02,$01,$37,$01,$0c,$0c,$0c,$0c,$0c,$0c
 .byte $0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$0c,$01,$0c,$01,$0c
 .byte $02,$0d,$01,$01,$02,$02,$12,$01,$05,$15,$55,$55,$01,$0e,$15,$01
 .byte $01,$15,$01,$01,$01,$15,$18,$0e,$01,$01,$01,$19,$0c,$01,$25,$1a
