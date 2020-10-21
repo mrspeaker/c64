@@ -191,7 +191,7 @@ init_sprites:{
             lda #7
             sta $d02a
 
-            ldx #64
+            ldx #63
 !:          lda spr_data,x
             sta SPRITES,x
             lda spr_data+64,x
@@ -535,6 +535,7 @@ spr_ball:
             .byte %11100000,%00000000,%00000000
             .fill 15*3, 0
             .byte 0
+
 
 SCREEN_ROW_LSB:
             .fill 25, <[SCREEN + i * 40]
