@@ -202,7 +202,7 @@ done:
 }
 
 apply_jetpack:{
-    ldy #5
+//in = y = speed
 lp:
     sec
     lda acc_y_lo
@@ -214,6 +214,28 @@ lp:
     dey
     bpl lp
     rts
+}
+
+apply_jetpack2:{
+            //in: x= x speed
+            // y == y speed
+            ldy #1
+            jsr apply_jetpack
+            ldy #5
+lp:
+            lda #$7f
+            bpl !pos+
+            dec acc_x_lo
+!pos:
+            adc acc_x_lo
+            sta acc_x_lo
+            bcc !nover+
+            inc acc_x_hi
+!nover:
+            dey
+            bpl lp
+
+            rts
 }
 
 
