@@ -8,6 +8,7 @@ TILES:  {
     .label tile_EMPTY_ID = 32
 
 tile_anim_counter:.byte 0
+tile_anim_counter2: .byte 0
 
 animate:    {
             lda tile_anim_counter
@@ -54,6 +55,31 @@ rot_right:
             bmi rot_right
 
 !:
+
+            clc
+            lda tile_anim_counter2
+            adc #3
+            sta tile_anim_counter2
+            bcc !+
+            // next timer.
+            jsr toggle_blocks
+!:
+            rts
+}
+
+toggle_blocks:{
+            ldy #35
+            lda charset_attrib_data,y
+            eor #%00010000
+            sta charset_attrib_data,y
+
+            ldy #7
+!:
+            lda ADDR_CHARSET_DATA+[35*8],y
+            eor #$ff
+            sta ADDR_CHARSET_DATA+[35*8],y
+            dey
+            bpl !-
             rts
 }
 
