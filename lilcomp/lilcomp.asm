@@ -1,9 +1,13 @@
         BasicUpstart2(entry)
 
-            .const TMP1 = $e8
-            .const TMP2 = $e9
-            .const TMP3 = $e6
-            .const TMP4 = $e7
+            .const TMP1 = $e1
+            .const TMP2 = $e2
+            .const TMP3 = $e3
+            .const TMP4 = $e4
+            .const TMP5 = $e5
+            .const TMP6 = $e6
+            .const TMP7 = $e7
+            .const TMP8 = $e8
 
             .label ADDR_CHAR_MAP_DATA         = $1800 // label = 'map_data'            (size = $03e8).
             .label ADDR_CHARSET_ATTRIB_DATA   = $2700 // label = 'charset_attrib_data' (size = $0100).
@@ -530,9 +534,9 @@ spr_ball:
             .byte %00000000,%00000000,%00000000
             .byte %00000000,%00000000,%00000000
             .byte %00000000,%00000000,%00000000
-            .byte %11100000,%00000000,%00000000
-            .byte %11100000,%00000000,%00000000
-            .byte %11100000,%00000000,%00000000
+            .byte %10010000,%00000000,%00000000
+            .byte %10010000,%00000000,%00000000
+            .byte %10010000,%00000000,%00000000
             .fill 15*3, 0
             .byte 0
 

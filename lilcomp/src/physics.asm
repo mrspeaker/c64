@@ -172,6 +172,7 @@ apply_move_force: {
 
     // TODO: how to move....
     // maybe try only move horiz if bounce_y and vel_y is small?
+    // (NOT USED?)
     lda input_state
     and #%00000100
     beq left
@@ -272,74 +273,94 @@ reflect_bounce:{
    If new X and not new Y - reflect off X
    If new Y and not new X - reflect off Y
    If both new... hit a corner.... which reflect?
+
+
+maybe..
+
+y:
+   x-newX > 0 ? [x-1,y] free? no reflect : reflect.
+   x-newX < 0 ? [x+1,y] free? no reflect : reflect
+x:
+  ...
  */
-    lda #0
-    sta TMP1
+    .const hit_count = TMP5
+    .const x_dist = TMP6
+    .const y_dist = TMP7
+    .const BOTH_AXES_NEW = 2
+
+            lda #0
+            sta hit_count
+
+            lda cell_cur_x
+            sec
+            sbc last_safe_x_cell
+            sta x_dist
+            beq !+
+            inc hit_count
+!:
+            lda cell_cur_y
+            sec
+            sbc last_safe_y_cell
+            sta y_dist
+            beq !+
+            inc hit_count
+!:
+
 
 refl_x:
-    lda cell_cur_x
-    sec
-    sbc last_safe_x_cell
+            lda x_dist
+    // same X cell: hit from top/bottom
+            beq refl_y
 
-    // == is same cell: must have hit from top/bottom
-    beq refl_y
+    //if hit_count==2, need to check above/below cell.
+            ldx hit_count
+            cpx #BOTH_AXES_NEW
+            bne !+
+    // Do we need to reflect on X?
+            ldx cell_cur_x
+            ldy last_safe_y_cell
+            jsr MAP.get_cell_i
+            cmp #TILES.tile_SOLID
+            bne refl_y
 
-    // >0 is hit from left
-    // <0 is hit from right
-    clc
-    lda vel_x_lo
-    eor #$ff
-    adc #1
-    sta vel_x_lo
-    lda vel_x_hi
-    eor #$ff
-    adc #0
-    sta vel_x_hi
+!:
+            clc
+            lda vel_x_lo
+            eor #$ff
+            adc #1
+            sta vel_x_lo
+            lda vel_x_hi
+            eor #$ff
+            adc #0
+            sta vel_x_hi
 
-    lda #1
-    sta bounced_x
-
-    inc TMP1
+            lda #1
+            sta bounced_x
 
 refl_y:
-    lda cell_cur_y
-    sec
-    sbc last_safe_y_cell
+            lda y_dist
 
     // == is same cell, must have hit from left/right
-    beq done
-
-    // >0 is hit from bottom
-    // <0 is hit from top
-    clc
-    lda vel_y_lo
-    eor #$ff
-    adc #1
-    sta vel_y_lo
-    lda vel_y_hi
-    eor #$ff
-    sta vel_y_hi
+            beq done
+            ldx hit_count
+            cpx #BOTH_AXES_NEW
+            bne !+
+            // TODO: check same as X: do we need to reflect?
+!:
+            clc
+            lda vel_y_lo
+            eor #$ff
+            adc #1
+            sta vel_y_lo
+            lda vel_y_hi
+            eor #$ff
+            sta vel_y_hi
     // We bounced Y
-    lda #1
-    sta bounced_y
-    inc TMP1
+            lda #1
+            sta bounced_y
 
 done:
-    lda TMP1
-    cmp #2
-    bne !+
-both_axis_hit:
-//    dec $d021
-    ldx vel_x_hi
-    ldy vel_y_hi
-    // TODO: bug here - bounces of X & Y when should only
-    // bounce off one depending on... velocity?
-//    .break
-//    bit $ea
-!:
-    rts
+            rts
 }
-
-
 
 }
