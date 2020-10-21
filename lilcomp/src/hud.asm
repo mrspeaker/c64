@@ -12,7 +12,7 @@ update:     {
             stx $416
             sta $417
 
-            lda b_x_lo
+            lda PHYSICS.vel_x_lo
             jsr UTILS.byte_to_decimal
             sty $420
             stx $421
