@@ -39,6 +39,9 @@
             .const scr_TOP_HIDDEN_AREA = 50
             .const scr_RIGHT_EDGE_FROM_MSB = 88
 
+            .const SCREEN = $400
+            .const SPRITES = $340
+
 #import "src/player.asm"
 #import "src/cursor.asm"
 #import "src/peeps.asm"
@@ -188,18 +191,22 @@ init_sprites:{
             lda #7
             sta $d02a
 
-            ldx #64*2
+            ldx #64
 !:          lda spr_data,x
-            sta $340,x
+            sta SPRITES,x
+            lda spr_data+64,x
+            sta SPRITES+64,x
+            lda spr_data+128,x
+            sta SPRITES+128,x
             dex
             bpl !-
 
-            lda #$340/64
+            lda #SPRITES/64
     .for(var i=0;i<NUM_PEEPS+2;i++){
-            sta $7f8+i
+            sta SCREEN+$3f8+i
     }
-            lda #$340/64+1
-            sta $7fc
+            lda #SPRITES/64+1
+            sta SCREEN+$3fc
             rts
 }
 
@@ -309,6 +316,9 @@ did_we_shoot:
             beq shot_done
 
 shoot:
+            lda #SPRITES/64+2
+            sta SCREEN+$3f8+3
+
             jsr SOUND.sfx
             inc stroke
             inc total_strokes
@@ -369,6 +379,8 @@ is_in_hole:
     // Hole complete!
             jsr load_level
 done:
+            lda #SPRITES/64
+            sta SCREEN+$3f8+3
             rts
 }
 
@@ -509,14 +521,25 @@ spr_data:
             .fill 15*3, 0
             .byte 0
 
+spr_cursor:
             .byte $15,$00,$00,$59,$40,$00,$62,$40
             .byte $00,$59,$40,$00,$15,$00,$00,$00
             .fill 8*6, 0
 
+spr_ball:
+            .byte %00000000,%00000000,%00000000
+            .byte %00000000,%00000000,%00000000
+            .byte %00000000,%00000000,%00000000
+            .byte %11100000,%00000000,%00000000
+            .byte %11100000,%00000000,%00000000
+            .byte %11100000,%00000000,%00000000
+            .fill 15*3, 0
+            .byte 0
+
 SCREEN_ROW_LSB:
-            .fill 25, <[$0400 + i * 40]
+            .fill 25, <[SCREEN + i * 40]
 SCREEN_ROW_MSB:
-            .fill 25, >[$0400 + i * 40]
+            .fill 25, >[SCREEN + i * 40]
 
 #import "data/levels_data.asm"
 #import "data/charset_data.asm"

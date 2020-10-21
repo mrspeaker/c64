@@ -5,7 +5,7 @@ draw_screen:{
 !:
     .for (var i=0; i<4;i++) {
             lda map_data+MAP_FRAME+(i * $FF),x
-            sta $400+(i*$FF),x
+            sta SCREEN+(i*$FF),x
             tay
             lda charset_attrib_data,y
             and #%00001111 // AND out colour
