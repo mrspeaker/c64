@@ -1,152 +1,155 @@
-CURSOR: {
+CURSOR:     {
 
-        .const cursor_x_lo = p_x_lo+4
-        .const cursor_x_hi = p_x_hi+4
-        .const cursor_y_lo = p_y_lo+4
-        .const cursor_y_hi = p_y_hi+4
-        .const cursor_DISTANCE = 10
+    .const cursor_x_lo = p_x_lo+4
+    .const cursor_x_hi = p_x_hi+4
+    .const cursor_y_lo = p_y_lo+4
+    .const cursor_y_hi = p_y_hi+4
+    .const RADIUS = 10
+    .const ACCELERATION = 2
+    .const SPEED_MULTIPLIER = 10
 
-angle:.byte -256/4, 0
-speed:.byte 0, 0
+angle:      .byte -256/4, 0
+speed:      .byte 0, 0
 
-hide:{
-    lda #0
-    sta cursor_x_hi
-    sta cursor_y_hi
+hide:       {
+            lda #0
+            sta cursor_x_hi
+            sta cursor_y_hi
     // reset color
-    lda #1
-    sta $d02b
-    rts
+            lda #1
+            sta $d02b
+            rts
 }
 
-        //======================
-update:{
-        //======================
+    //======================
+update:     {
+    //======================
     .label moved_cursor = TMP1
 
-    lda #0
-    sta moved_cursor
+            lda #0
+            sta moved_cursor
 
-    lda input_state
-    tax
-    and #joy_LEFT
-    bne right
+            lda input_state
+            tax
+            and #joy_LEFT
+            bne right
 left:
-    inc moved_cursor
+            inc moved_cursor
 
-    lda speed
-    bmi !+
-    lda #0
+            lda speed
+            bmi !+
+            lda #0
 !:
-    clc
-    adc #-2
-    bmi !+
-    lda #$80 // clamp
+            clc
+            adc #-ACCELERATION
+            bmi !+
+            lda #$80 // clamp
 !:
-    sta speed
-    jmp move_cursor
+            sta speed
+            jmp move_cursor
 
 right:
-    txa
-    and #joy_RIGHT
+            txa
+            and #joy_RIGHT
 
-    bne no_move
-    inc moved_cursor
+            bne no_move
+            inc moved_cursor
 
-    lda speed
-    bpl !+
-    lda #0
+            lda speed
+            bpl !+
+            lda #0
 !:
-    clc
-    adc #2
-    bpl !+
-    lda #$7f // clamp
+            clc
+            adc #ACCELERATION
+            bpl !+
+            lda #$7f // clamp
 !:
-    sta speed
+            sta speed
 
 move_cursor:
-    ldy #5
+            ldy #SPEED_MULTIPLIER
 apply:
-    clc
-    lda speed
-    bpl !pos+
-    dec angle
+            clc
+            lda speed
+            bpl !pos+
+            dec angle
 !pos:
-    adc angle+1
-    sta angle+1
-    bcc !nover+
-    inc angle
+            adc angle+1
+            sta angle+1
+            bcc !nover+
+            inc angle
 !nover:
-    dey
-    bpl apply
+            dey
+            bpl apply
 
 no_move:
     // Reset cursor speeds
-    lda moved_cursor
-    bne reset_power
-    lda #0
-    sta speed
-    sta speed+1
-    jmp cursor_pos
+            lda moved_cursor
+            bne reset_power
+            lda #0
+            sta speed
+            sta speed+1
+            jmp cursor_pos
 
 reset_power:
-    lda #0
-    sta shoot_power
+            lda #0
+            sta shoot_power
 
 
 cursor_pos:
-    lda b_x_lo
-    sta cursor_x_lo
-    lda b_x_hi
-    sta cursor_x_hi
+            lda b_x_lo
+            sta cursor_x_lo
+            lda b_x_hi
+            sta cursor_x_hi
 
-    lda b_y_lo
-    sta cursor_y_lo
-    lda b_y_hi
-    and #%01111111
-    sta cursor_y_hi
+            lda b_y_lo
+            sta cursor_y_lo
+            lda b_y_hi
+            and #%01111111
+            sta cursor_y_hi
 
 move_angle:
-    ldx angle
-    ldy #cursor_DISTANCE
+            ldx angle
+    // TODO: make power of 2 and shift it.
+            ldy #RADIUS
 mulx:
-    clc
-    lda cos,x
-    bpl !pos+
-    dec cursor_x_hi
+            clc
+            lda cos,x
+            bpl !pos+
+            dec cursor_x_hi
 !pos:
-    adc cursor_x_lo
-    sta cursor_x_lo
-    bcc !nover+
-    inc cursor_x_hi
+            adc cursor_x_lo
+            sta cursor_x_lo
+            bcc !nover+
+            inc cursor_x_hi
 !nover:
 
 muly:
-    clc
-    lda sin,x
-    bpl !pos+
-    dec cursor_y_hi
+            clc
+            lda sin,x
+            bpl !pos+
+            dec cursor_y_hi
 !pos:
-    adc cursor_y_lo
-    sta cursor_y_lo
-    bcc !nover+
-    inc cursor_y_hi
+            adc cursor_y_lo
+            sta cursor_y_lo
+            bcc !nover+
+            inc cursor_y_hi
 !nover:
-    dey
-    bpl mulx
+            dey
+            bpl mulx
 
 set_color:
-    txa //lda angle
-    and #%00011111
-    bne !+
+            txa     //lda angle
+            and #%00011111
+            bne !+
     // 45 degree angle.
-    lda #5
-    jmp done
+            lda #5
+            jmp done
 !:
-    lda #1
+            lda #1
 done:
-    sta $d02b
-    rts
+            sta $d02b
+            rts
 }
 
 
