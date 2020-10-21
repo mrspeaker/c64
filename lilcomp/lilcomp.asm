@@ -417,11 +417,19 @@ check_collisions:{
             beq pickup
 
             lda cell_cur_value
-            cmp #31
-            bne safe
 vent:
+            cmp #31
+            bne !+
+            ldy #5
             jsr PHYSICS.apply_jetpack
             jmp safe
+!:
+right_vent:
+            cmp #77
+            bne !+
+            jsr PHYSICS.apply_jetpack2
+
+!:          jmp safe
 
 pickup:
             jsr get_pickup
