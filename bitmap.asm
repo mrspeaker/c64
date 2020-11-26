@@ -1,4 +1,5 @@
 .var picture1 = LoadBinary("mrspeaker1.kla", BF_KOALA)
+.var music = LoadSid("gorf.sid")
 
             BasicUpstart2(entry)
 
@@ -9,7 +10,9 @@ entry:
                 sta $d021
                 sta $d020
 
-                sei
+            sei
+
+            jsr music.init
 
                 lda #%01111111          // disable CIA timer
                 sta $dc0d
@@ -123,7 +126,9 @@ irq_text_mode:
                 lda #<irq_bitmap
                 ldx #>irq_bitmap
                 sta $314
-                stx $315
+            stx $315
+
+            jsr music.play
 
                 // irq done
                 dec $d019
@@ -145,3 +150,4 @@ spr:            .fill 64, $aa
  * = $0c00 "ScreenRam1"; screenRam1: .fill picture1.getScreenRamSize(), picture1.getScreenRam(i)
  * = $1c00 "ColorRam1"; colorRam1: .fill picture1.getColorRamSize(), picture1.getColorRam(i)
  * = $2000 "Bitmap1"; bitMap1: .fill picture1.getBitmapSize(), picture1.getBitmap(i)
+ * = music.location "Music"; .fill music.size, music.getData(i)
