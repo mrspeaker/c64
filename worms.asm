@@ -1,11 +1,15 @@
             BasicUpstart2(init)
 
+.var music = LoadSid("gorf.sid")
+
             .const SPR_ROWS = 9
 init:
                 sei
                 lda #3
                 sta $D020
-                sta $D021
+            sta $D021
+
+            jsr music.init
 
                 jsr load_sprites
                 jsr init_irq
@@ -79,7 +83,8 @@ load_sprites:   {
 }
 
 irq:            {
-                inc $D020
+            inc $D020
+
 
                 ldx spr_last
                 lda spr_lines,x
@@ -146,6 +151,8 @@ _text_scr:
                 and #$7
                 sta scrx
 
+            jsr music.play
+
                 dec $D019
                 jmp $EA31               // leave to rom
 _not_last:
@@ -172,3 +179,6 @@ scrx_off:       .byte 0,1,2,3,3,2,1
 sprites:
                 .import binary "worms_sprites.bin"
                 .fill 64, $55
+
+            *=music.location "Music"
+            .fill music.size, music.getData(i)
