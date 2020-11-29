@@ -40,10 +40,10 @@ load_sprites:{
                     // X and Y pos
             lda #$ff
             ldx #$50
-    .for (var i = 0; i < 6; i++) {
-            sta $D000 + i * 2
-            stx $D001 + i * 2
-    }
+            .for (var i = 0; i < 6; i++) {
+                sta $D000 + i * 2
+                stx $D001 + i * 2
+            }
 
             lda #%00100110
             sta $D01C // multicolor
